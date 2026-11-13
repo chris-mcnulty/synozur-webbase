@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download, Loader2, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import type { AdminFormSubmission } from "@workspace/api-zod/types";
+import { webhookBulkRetryFeedback, webhookRetryFeedback } from "./submissions-webhook-feedback";
 
 const PAGE_SIZE = 25;
 const FORM_TYPES: { value: string; label: string }[] = [
@@ -36,6 +38,7 @@ const FORM_TYPES: { value: string; label: string }[] = [
   { value: "contact", label: "Contact" },
   { value: "subscribe", label: "Subscribe" },
   { value: "start", label: "Get Started" },
+  { value: "event_registration", label: "Event registrations" },
 ];
 
 function formatDateTime(value: string | Date): string {
@@ -65,6 +68,7 @@ export default function AdminSubmissionsList() {
   const queryClient = useQueryClient();
 
   const [formType, setFormType] = useState<string>("all");
+  const [eventSlug, setEventSlug] = useState<string>("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -80,17 +84,22 @@ export default function AdminSubmissionsList() {
       setSelected(updated);
       await queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
       if (updated.webhookStatus === "ok") {
-        toast({ title: "Webhook resent", description: "Delivery succeeded." });
+        toast({ title: "External webhook resent", description: "Delivery succeeded. HubSpot was not retried." });
+      } else if (updated.webhookStatus === "skipped") {
+        toast({
+          title: "External webhook not configured",
+          description: webhookRetryFeedback(updated),
+        });
       } else {
         toast({
-          title: "Webhook still failing",
+          title: "External webhook still failing",
           description: updated.webhookError ?? updated.webhookStatus ?? "Unknown error",
           variant: "destructive",
         });
       }
     } catch (err) {
       toast({
-        title: "Resend failed",
+        title: "External webhook resend failed",
         description: err instanceof Error ? err.message : String(err),
         variant: "destructive",
       });
@@ -108,16 +117,23 @@ export default function AdminSubmissionsList() {
     }
   };
 
-  const effectiveType = formType === "all" ? undefined : formType;
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-submissions", effectiveType, search, page],
+  const { data: events, isLoading: eventsLoading, isError: eventsError, refetch: refetchEvents } = useQuery({
+    queryKey: ["admin-submission-events"],
+    queryFn: () => api.adminEvents(),
+  });
+  const effectiveEvent = eventSlug === "all" ? undefined : eventSlug;
+  const effectiveType = effectiveEvent ? "event_registration" : formType === "all" ? undefined : formType;
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["admin-submissions", effectiveType, effectiveEvent, search, page],
     queryFn: () =>
       api.listSubmissions({
         formType: effectiveType,
+        eventSlug: effectiveEvent,
         search: search || undefined,
         page,
         pageSize: PAGE_SIZE,
       }),
+    refetchInterval: 30_000,
   });
 
   const invalidate = () =>
@@ -126,17 +142,14 @@ export default function AdminSubmissionsList() {
   const retryOne = useMutation({
     mutationFn: (id: number) => api.retrySubmission(id),
     onSuccess: (row) => {
-      setRetryError(null);
-      setRetryMessage(
-        row.webhookStatus === "ok"
-          ? `Retry succeeded for #${row.id}.`
-          : `Retry for #${row.id} returned “${row.webhookStatus ?? "error"}”.`,
-      );
+      const message = webhookRetryFeedback(row);
+      setRetryError(isFailedStatus(row.webhookStatus) ? message : null);
+      setRetryMessage(isFailedStatus(row.webhookStatus) ? null : message);
       void invalidate();
     },
     onError: (err) => {
       setRetryMessage(null);
-      setRetryError(err instanceof Error ? err.message : "Retry failed");
+      setRetryError(err instanceof Error ? err.message : "External webhook retry failed");
     },
   });
 
@@ -144,20 +157,17 @@ export default function AdminSubmissionsList() {
     mutationFn: () =>
       api.retryFailedSubmissions({
         formType: effectiveType,
+        eventSlug: effectiveEvent,
         search: search || undefined,
       }),
     onSuccess: (result) => {
       setRetryError(null);
-      setRetryMessage(
-        result.retried === 0
-          ? "No failed submissions to retry."
-          : `Retried ${result.retried}: ${result.succeeded} succeeded, ${result.failed} failed.`,
-      );
+      setRetryMessage(webhookBulkRetryFeedback(result));
       void invalidate();
     },
     onError: (err) => {
       setRetryMessage(null);
-      setRetryError(err instanceof Error ? err.message : "Bulk retry failed");
+      setRetryError(err instanceof Error ? err.message : "Bulk external webhook retry failed");
     },
   });
 
@@ -167,6 +177,7 @@ export default function AdminSubmissionsList() {
 
   const csvHref = api.submissionsCsvUrl({
     formType: effectiveType,
+    eventSlug: effectiveEvent,
     search: search || undefined,
   });
 
@@ -183,7 +194,7 @@ export default function AdminSubmissionsList() {
             data-testid="button-retry-all-failed"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${retryAll.isPending ? "animate-spin" : ""}`} />
-            {retryAll.isPending ? "Retrying…" : "Retry all failed"}
+            {retryAll.isPending ? "Retrying webhooks…" : "Retry failed webhooks"}
           </Button>
           <a href={csvHref} download data-testid="link-export-csv">
             <Button variant="outline">
@@ -193,6 +204,12 @@ export default function AdminSubmissionsList() {
         </>
       }
     >
+      <p className="mb-4 text-sm text-muted-foreground">
+        Webhook status and retry actions apply only to the optional external webhook, not HubSpot.
+        A skipped webhook means no external destination is configured; the submission remains saved.
+        For HubSpot delivery status and retries, open{" "}
+        <Link href="/admin/integrations/hubspot" className="underline">HubSpot integration</Link>.
+      </p>
 
       <form
         className="flex flex-wrap items-end gap-3 mb-4"
@@ -212,6 +229,7 @@ export default function AdminSubmissionsList() {
             onValueChange={(v) => {
               setPage(1);
               setFormType(v);
+              if (v !== "all" && v !== "event_registration") setEventSlug("all");
             }}
           >
             <SelectTrigger data-testid="select-form-type">
@@ -226,6 +244,33 @@ export default function AdminSubmissionsList() {
             </SelectContent>
           </Select>
         </div>
+        {(formType === "all" || formType === "event_registration") && (
+          <div className="w-full sm:w-80">
+            <label htmlFor="submission-event" className="block text-xs uppercase tracking-wide text-muted-foreground mb-1">
+              Event
+            </label>
+            <Select
+              value={eventSlug}
+              onValueChange={(v) => {
+                setEventSlug(v);
+                setPage(1);
+              }}
+              disabled={eventsLoading || eventsError}
+            >
+              <SelectTrigger id="submission-event" data-testid="select-submission-event">
+                <SelectValue placeholder="All events" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{eventsLoading ? "Loading events…" : eventsError ? "Events unavailable" : "All events"}</SelectItem>
+                {[...(events ?? [])].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()).map((event) => (
+                  <SelectItem key={event.id} value={event.slug}>
+                    {event.title} — {new Date(event.startDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: event.timezone || "UTC" })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="flex-1 min-w-[240px]">
           {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Wraps the sibling Input below; not auto-detected by the rule. */}
           <label className="block text-xs uppercase tracking-wide text-muted-foreground mb-1">
@@ -241,7 +286,7 @@ export default function AdminSubmissionsList() {
         <Button type="submit" data-testid="button-search">
           <Search className="h-4 w-4 mr-2" /> Search
         </Button>
-        {(search || formType !== "all") && (
+        {(search || formType !== "all" || eventSlug !== "all") && (
           <Button
             type="button"
             variant="ghost"
@@ -249,6 +294,7 @@ export default function AdminSubmissionsList() {
               setSearchInput("");
               setSearch("");
               setFormType("all");
+              setEventSlug("all");
               setPage(1);
             }}
             data-testid="button-clear-filters"
@@ -257,6 +303,21 @@ export default function AdminSubmissionsList() {
           </Button>
         )}
       </form>
+      {eventsError && (
+        <div className="mb-3 text-sm text-destructive" role="alert">
+          Could not load the event selector. <Button variant="link" onClick={() => void refetchEvents()}>Try again</Button>
+        </div>
+      )}
+      {isError && (
+        <div className="mb-3 text-sm text-destructive" role="alert">
+          Could not load submissions. <Button variant="link" onClick={() => void refetch()}>Try again</Button>
+        </div>
+      )}
+      {effectiveEvent && !isError && !isLoading && (
+        <p className="mb-3 text-sm text-muted-foreground" role="status">
+          {total} registration{total === 1 ? "" : "s"}{search ? " matching your search" : ""}. Export CSV includes all matching registrations, not just this page.
+        </p>
+      )}
 
       {(retryMessage || retryError) && (
         <div
@@ -279,7 +340,7 @@ export default function AdminSubmissionsList() {
               <TableHead className="w-[100px]">Form</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Message / Details</TableHead>
-              <TableHead className="w-[120px]">Webhook</TableHead>
+              <TableHead className="w-[120px]">External webhook</TableHead>
               <TableHead className="w-[110px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -291,16 +352,17 @@ export default function AdminSubmissionsList() {
                 </TableCell>
               </TableRow>
             )}
-            {!isLoading && items.length === 0 && (
+            {!isLoading && !isError && items.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  No submissions found.
+                  {effectiveEvent ? "No registrations found for this event." : "No submissions found."}
                 </TableCell>
               </TableRow>
             )}
             {items.map((s) => {
               const payload = s.payload as Record<string, unknown>;
               const message =
+                (s.formType === "event_registration" && typeof payload.eventTitle === "string" && payload.eventTitle) ||
                 (typeof payload.message === "string" && payload.message) ||
                 (typeof payload.brief === "string" && payload.brief) ||
                 (typeof payload.source === "string" && `source: ${payload.source}`) ||
@@ -357,7 +419,7 @@ export default function AdminSubmissionsList() {
                             retryOne.isPending && retryOne.variables === s.id ? "animate-spin" : ""
                           }`}
                         />
-                        Retry
+                        Retry webhook
                       </Button>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
@@ -460,8 +522,13 @@ export default function AdminSubmissionsList() {
 
                 <section>
                   <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-                    Webhook
+                    External webhook (optional)
                   </h3>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    This delivery channel is separate from HubSpot. Resending here does not retry
+                    HubSpot contact sync or timeline events. Skipped means no external webhook
+                    destination is configured; the submission remains saved.
+                  </p>
                   <div className="flex items-start gap-2">
                     <span
                       className={`text-xs uppercase tracking-wide px-2 py-1 rounded ${statusBadgeClass(selected.webhookStatus)}`}
@@ -478,7 +545,7 @@ export default function AdminSubmissionsList() {
                       </pre>
                     )}
                   </div>
-                  {selected.webhookStatus !== "ok" && (
+                  {isFailedStatus(selected.webhookStatus) && (
                     <div className="mt-3">
                       <Button
                         variant="outline"
@@ -492,7 +559,7 @@ export default function AdminSubmissionsList() {
                         ) : (
                           <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                         )}
-                        {resending ? "Resending…" : "Resend webhook"}
+                        {resending ? "Resending…" : "Resend external webhook"}
                       </Button>
                     </div>
                   )}

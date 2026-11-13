@@ -19,6 +19,7 @@ import { applyClientOrgRole } from "../lib/entra";
 import { sendOrgApproved, sendClientOrgInvite } from "../lib/email";
 import { audit, buildAuditDiff } from "../lib/audit";
 import { createSession, setSessionCookie } from "../lib/sessions";
+import { enqueueCompanyUpsert } from "../lib/hubspotSync";
 
 // Admin CRUD for client organizations. Organizations are the unit of client
 // access — any user (Entra SSO or email/password) linked to an active org
@@ -358,6 +359,15 @@ router.post("/admin/client-orgs", requireAuth, requireManage, async (req, res): 
     entityId: row.id,
     diff: { after: orgSnapshot(row) },
   });
+
+  // Enqueue HubSpot Company sync (fire-and-forget; gated on hubspotEnabled).
+  void enqueueCompanyUpsert({
+    orgId: row.id,
+    name: row.name,
+    slug: row.slug,
+    approvedEmailDomains: row.approvedEmailDomains ?? [],
+  });
+
   res.status(201).json(row);
 });
 
@@ -462,6 +472,14 @@ router.patch("/admin/client-orgs/:id", requireAuth, requireManage, async (req, r
       diff,
     });
   }
+
+  // Re-sync to HubSpot whenever the org is updated.
+  void enqueueCompanyUpsert({
+    orgId: updated.id,
+    name: updated.name,
+    slug: updated.slug,
+    approvedEmailDomains: updated.approvedEmailDomains ?? [],
+  });
 
   res.json(updated);
 });

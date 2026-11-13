@@ -1,0 +1,88 @@
+import { createHash } from "node:crypto";
+import { buildSsml, isAzureTtsConfigured } from "../azureTts";
+import { chapterFileExists, readChapterFile, saveChapterFile } from "./store";
+import { STANDARD_SAMPLE } from "./text";
+import { beginSpeechAttempt, finishSpeechAttempt, type SpeechUsageContext } from "./costs";
+import { PCM_OUTPUT, MP3_OUTPUT, isChapterPcm } from "./formats";
+
+// Generally available English single-narrator Dragon HD voices. Keep this
+// independent of the daily briefing's smaller curated voice selection.
+// Preview, multi-talker, and Omni models are intentionally excluded.
+export const CHAPTER_VOICES = [
+  "en-US-Andrew:DragonHDLatestNeural",
+  "en-US-Ava:DragonHDLatestNeural",
+  "en-US-Emma:DragonHDLatestNeural",
+  "en-US-Steffan:DragonHDLatestNeural",
+  "en-US-Aria:DragonHDLatestNeural",
+  "en-US-Adam:DragonHDLatestNeural",
+  "en-US-Alloy:DragonHDLatestNeural",
+  "en-US-Andrew2:DragonHDLatestNeural",
+  "en-US-Brian:DragonHDLatestNeural",
+  "en-US-Davis:DragonHDLatestNeural",
+  "en-US-Emma2:DragonHDLatestNeural",
+  "en-US-Jenny:DragonHDLatestNeural",
+  "en-US-Nova:DragonHDLatestNeural",
+  "en-US-Phoebe:DragonHDLatestNeural",
+  "en-US-Serena:DragonHDLatestNeural",
+] as const;
+export { isAzureTtsConfigured };
+export class ChapterSpeechError extends Error {
+  constructor(message: string, readonly retryable: boolean) { super(message); }
+}
+
+export async function renderChapterSection(text: string, voice: string, context: SpeechUsageContext, outputFormat: typeof PCM_OUTPUT | typeof MP3_OUTPUT = PCM_OUTPUT): Promise<Buffer> {
+  if (!(CHAPTER_VOICES as readonly string[]).includes(voice)) throw new Error("Choose a supported Dragon HD voice.");
+  if (!isAzureTtsConfigured()) throw new Error("Azure Speech is not configured.");
+  const region = process.env.AZURE_SPEECH_REGION?.trim();
+  if (!region || !/^[a-z0-9-]+$/.test(region)) throw new Error("Azure Speech region is invalid.");
+  const attemptId = await beginSpeechAttempt(text, voice, context);
+  const response = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+    method: "POST",
+    signal: AbortSignal.timeout(180_000),
+    headers: {
+      "Ocp-Apim-Subscription-Key": process.env.AZURE_SPEECH_KEY!,
+      "Content-Type": "application/ssml+xml",
+      "X-Microsoft-OutputFormat": outputFormat,
+      "User-Agent": "synozur-chapter-audio",
+    },
+    body: buildSsml(text, voice),
+  }).catch(async error => {
+    // An aborted/timed-out request may still have been processed by Azure.
+    await finishSpeechAttempt(attemptId, "uncertain").catch(() => {});
+    throw error;
+  });
+  await finishSpeechAttempt(attemptId, response.ok ? "succeeded" :
+    [401, 403, 404, 429].includes(response.status) ? "rejected" : "uncertain");
+  // Do not persist Azure bodies: these can echo manuscript content.
+  if (!response.ok) {
+    await response.body?.cancel();
+    if (response.status === 401 || response.status === 403) throw new ChapterSpeechError("Azure Speech rejected its credentials. Ask an administrator to check the speech connection.", false);
+    if (response.status === 400 || response.status === 404) throw new ChapterSpeechError("Azure could not use this voice or text in the configured region. Choose another Dragon HD voice or ask an administrator to check availability.", false);
+    throw new ChapterSpeechError(`Azure Speech is temporarily unavailable (HTTP ${response.status}). Retry this chapter later.`, response.status === 429 || response.status >= 500);
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length < 100) throw new ChapterSpeechError("Azure returned incomplete audio. Retry this chapter.", true);
+  if (outputFormat === PCM_OUTPUT && !isChapterPcm(bytes)) {
+    throw new ChapterSpeechError("Azure did not return the required 48 kHz lossless PCM source. Ask an administrator to check speech format support.", false);
+  }
+  return bytes;
+}
+
+const sampleRequests = new Map<string, Promise<Buffer>>();
+export async function getChapterSample(voice: string, context: SpeechUsageContext): Promise<Buffer> {
+  if (!(CHAPTER_VOICES as readonly string[]).includes(voice)) throw new Error("Choose a supported Dragon HD voice.");
+  const existing = sampleRequests.get(voice);
+  if (existing) return existing;
+  const request = (async () => {
+    // Samples remain lightweight MP3s, never publication sources. Keep their
+    // existing cache version because their synthesis format has not changed.
+    const hash = createHash("sha256").update(`sample-1|${voice}|${STANDARD_SAMPLE}`).digest("hex");
+    const key = `samples/${hash}.mp3`;
+    if (await chapterFileExists(key)) return readChapterFile(key);
+    const bytes = await renderChapterSection(STANDARD_SAMPLE, voice, context, MP3_OUTPUT);
+    await saveChapterFile(key, bytes, "audio/mpeg");
+    return bytes;
+  })();
+  sampleRequests.set(voice, request);
+  try { return await request; } finally { sampleRequests.delete(voice); }
+}

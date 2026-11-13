@@ -176,7 +176,7 @@ function DefaultOverview() {
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: SITE_ORIGIN },
-      { "@type": "ListItem", position: 2, name: "Services", item: overviewUrl },
+      { "@type": "ListItem", position: 2, name: "Solutions", item: overviewUrl },
     ],
   };
   const itemListJsonLd =
@@ -408,7 +408,7 @@ function PillarOverview({ slug }: { slug: string }) {
           {
             "@type": "ListItem",
             position: 2,
-            name: "Services",
+            name: "Solutions",
             item: `${SITE_ORIGIN}/services-overview/default`,
           },
           {

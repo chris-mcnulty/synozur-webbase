@@ -19,7 +19,7 @@
  *   - socialBotRenderer middleware (secondary net for direct api-server hits).
  */
 
-import { and, asc, desc, eq, isNull, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { publishedAtNullOrReachedSql } from "./publishWindow";
 import type { SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
@@ -40,6 +40,11 @@ import {
   applicationsTable,
   aboutValuesTable,
   jobPostingsTable,
+  postCategories,
+  categoriesTable,
+  polarisEpisodesTable,
+  postTags,
+  tagsTable,
 } from "@workspace/db";
 import { resolveOgData, htmlEscape, SITE_NAME, type OgData } from "./ogResolver";
 import { siteOrigin } from "./siteOrigin";
@@ -153,6 +158,8 @@ export function renderAgentDocument(og: OgData, mainHtml: string): string {
 <meta name="twitter:description" content="${d}" />
 <meta name="twitter:image" content="${img}" />
 <link rel="canonical" href="${url}" />
+<link rel="icon" type="image/x-icon" href="${origin}/favicon.ico" />
+<link rel="icon" type="image/png" href="${origin}/favicon.png" />
 </head>
 <body>
 <header>
@@ -220,9 +227,10 @@ async function renderInsightsList(origin: string): Promise<string> {
   return `<h1>Insights</h1>\n<ul>${items}</ul>`;
 }
 
-async function renderInsightDetail(slug: string, og: OgData): Promise<string> {
+export async function renderInsightDetail(slug: string, og: OgData, origin: string): Promise<string> {
   const [post] = await db
     .select({
+      id: postsTable.id,
       excerpt: postsTable.excerpt,
       bodyHtml: postsTable.bodyHtml,
       publishedAt: postsTable.publishedAt,
@@ -240,7 +248,127 @@ async function renderInsightDetail(slug: string, og: OgData): Promise<string> {
   const date = fmtDate(post.publishedAt);
   const excerpt = post.excerpt ? `<p>${htmlEscape(post.excerpt)}</p>` : "";
   const body = sanitizeCmsHtml(post.bodyHtml);
-  return `<h1>${htmlEscape(og.title)}</h1>${date ? `<p><time>${date}</time></p>` : ""}${excerpt}<article>${body}</article>`;
+
+  // Fetch related posts in the same category — creates crawl paths from
+  // indexed posts into the long tail so Google discovers them.
+  let relatedHtml = "";
+  try {
+    const [catRow] = await db
+      .select({ categoryId: postCategories.categoryId })
+      .from(postCategories)
+      .where(eq(postCategories.postId, post.id))
+      .limit(1);
+
+    // Helper: fetch published posts by a set of IDs (excluding already-seen ones),
+    // then re-order results to match the input `ids` order so caller-supplied
+    // ranking (e.g. overlap-count) is preserved.
+    const fetchPublishedByIds = async (
+      ids: string[],
+      excludeIds: Set<string>,
+    ) => {
+      const eligible = ids.filter((id) => !excludeIds.has(id));
+      if (eligible.length === 0) return [];
+      const rows = await db
+        .select({
+          id: postsTable.id,
+          title: postsTable.title,
+          slug: postsTable.slug,
+          excerpt: postsTable.excerpt,
+        })
+        .from(postsTable)
+        .where(
+          and(
+            inArray(postsTable.id, eligible),
+            eq(postsTable.status, "published"),
+            isNull(postsTable.deletedAt),
+            publishedAtNullOrReachedSql(postsTable.publishedAt),
+          ),
+        );
+      // Restore caller-supplied order (DB may return rows in any order).
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      return eligible.map((id) => byId.get(id)).filter(Boolean) as typeof rows;
+    };
+
+    // --- Category-based related posts ---
+    const seenIds = new Set<string>([post.id]);
+    let related: { id: string; title: string; slug: string; excerpt: string | null }[] = [];
+
+    if (catRow) {
+      const siblingRows = await db
+        .select({ postId: postCategories.postId })
+        .from(postCategories)
+        .where(eq(postCategories.categoryId, catRow.categoryId));
+      // Sort siblings by postId for consistent ordering within a category.
+      const siblingIds = siblingRows
+        .map((r) => r.postId)
+        .filter((id) => id !== post.id);
+
+      if (siblingIds.length > 0) {
+        related = await fetchPublishedByIds(siblingIds, seenIds);
+        related = related.slice(0, 4);
+        for (const r of related) seenIds.add(r.id);
+      }
+    }
+
+    // --- Tag-based fallback: supplement when category yields fewer than 3 ---
+    if (related.length < 3) {
+      const tagRows = await db
+        .select({ tagId: postTags.tagId })
+        .from(postTags)
+        .where(eq(postTags.postId, post.id));
+
+      if (tagRows.length > 0) {
+        const tagIds = tagRows.map((r) => r.tagId);
+
+        // For every tag on this post, find sibling post IDs (excluding already-seen).
+        const tagSiblingRows = await db
+          .select({ postId: postTags.postId })
+          .from(postTags)
+          .where(
+            and(
+              inArray(postTags.tagId, tagIds),
+              notInArray(postTags.postId, [...seenIds]),
+            ),
+          );
+
+        // Count how many tags each sibling shares with the current post.
+        const overlapCount = new Map<string, number>();
+        for (const row of tagSiblingRows) {
+          overlapCount.set(row.postId, (overlapCount.get(row.postId) ?? 0) + 1);
+        }
+
+        // Sort by overlap count (descending); take enough extras so the
+        // publish-window filter has room to trim down to the target count.
+        const needed = 3 - related.length;
+        const candidates = [...overlapCount.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, needed * 3)
+          .map(([id]) => id);
+
+        if (candidates.length > 0) {
+          // fetchPublishedByIds preserves the overlap-ranked candidate order.
+          const tagRelated = await fetchPublishedByIds(candidates, seenIds);
+          related = [...related, ...tagRelated.slice(0, needed)];
+        }
+      }
+    }
+
+    // Trim to at most 3 and render.
+    const trimmed = related.slice(0, 3);
+    if (trimmed.length > 0) {
+      const items = trimmed
+        .map(
+          (r) =>
+            `<li><a href="${origin}/insights/${encodeURIComponent(r.slug)}">${htmlEscape(r.title)}</a>${r.excerpt ? ` — ${htmlEscape(r.excerpt)}` : ""}</li>`,
+        )
+        .join("\n");
+      relatedHtml = `<section aria-label="Related posts"><h2>Related posts</h2><ul>${items}</ul></section>`;
+    }
+  } catch {
+    // Related posts are a crawl aid, not critical — degrade gracefully.
+  }
+
+  return `<h1>${htmlEscape(og.title)}</h1>${date ? `<p><time>${date}</time></p>` : ""}${excerpt}<article>${body}</article>${relatedHtml}`;
 }
 
 async function renderServiceDetail(slug: string, og: OgData): Promise<string> {
@@ -1040,6 +1168,39 @@ async function renderCollateralDetail(
   return `<h1>${htmlEscape(og.title)}</h1><article>${body}</article>`;
 }
 
+async function renderPolarisList(origin: string): Promise<string> {
+  const rows = await db
+    .select({
+      title: polarisEpisodesTable.title,
+      slug: polarisEpisodesTable.slug,
+      episodeNumber: polarisEpisodesTable.episodeNumber,
+      guestName: polarisEpisodesTable.guestName,
+      summary: polarisEpisodesTable.summary,
+      publishedAt: polarisEpisodesTable.publishedAt,
+    })
+    .from(polarisEpisodesTable)
+    .where(
+      and(
+        isNull(polarisEpisodesTable.deletedAt),
+        eq(polarisEpisodesTable.active, true),
+        eq(polarisEpisodesTable.status, "published"),
+        publishedAtNullOrReachedSql(polarisEpisodesTable.publishedAt),
+        sql`(${polarisEpisodesTable.unpublishedAt} is null or ${polarisEpisodesTable.unpublishedAt} > now())`,
+      ),
+    )
+    .orderBy(desc(polarisEpisodesTable.publishedAt), desc(polarisEpisodesTable.episodeNumber))
+    .limit(100);
+  if (!rows.length) return "";
+  const items = rows
+    .map((r) => {
+      const epNum = r.episodeNumber ? `<p>Episode ${r.episodeNumber}</p>` : "";
+      const guest = r.guestName ? `<p>Guest: ${htmlEscape(r.guestName)}</p>` : "";
+      const summary = r.summary ? `<p>${htmlEscape(r.summary)}</p>` : "";
+      return `<li><h2><a href="${origin}/polaris/${encodeURIComponent(r.slug)}">${htmlEscape(r.title)}</a></h2>${epNum}${guest}${summary}</li>`;
+    })
+    .join("\n");
+  return `<h1>Polaris Podcast</h1>\n<p>Strategic conversations with transformation leaders.</p>\n<ul>${items}</ul>`;
+}
 async function renderAbout(): Promise<string> {
   const rows = await db
     .select({ title: aboutValuesTable.title, body: aboutValuesTable.body })
@@ -1086,7 +1247,7 @@ async function renderServicesOverviewHub(): Promise<string> {
       return `<section><h2><a href="/services/${htmlEscape(r.slug)}">${htmlEscape(r.title)}</a></h2>${desc}</section>`;
     })
     .join("\n");
-  return `<h1>Services Overview</h1>\n<p>The Synozur Alliance offers a comprehensive suite of transformation services designed to help organizations navigate change, implement AI-first strategies, and deliver measurable outcomes.</p>\n${items}`;
+  return `<h1>Solutions Overview</h1>\n<p>The Synozur Alliance offers a comprehensive suite of transformation services designed to help organizations navigate change, implement AI-first strategies, and deliver measurable outcomes.</p>\n${items}`;
 }
 
 async function renderCareersList(): Promise<string> {
@@ -1174,9 +1335,9 @@ async function renderCareerDetail(slug: string): Promise<string> {
 }
 
 function renderPrivacy(): string {
-  return `<h1>Privacy Statement</h1>
+  return `<h1>Privacy Policy</h1>
 <p>Synozur \u00b7 Effective Date: May 25, 2026 \u00b7 Last Modified: May 25, 2026</p>
-<p>At Synozur, we are committed to protecting the privacy and security of our customers and partners. This privacy statement outlines our practices regarding the collection, use, and sharing of personal information.</p>
+<p>At Synozur, we are committed to protecting the privacy and security of our customers and partners. This privacy policy outlines our practices regarding the collection, use, and sharing of personal information.</p>
 <h2>Collection of Information</h2>
 <p>We collect personal information such as name, email address, phone number, and company affiliation when you register for our webinars, events, or newsletters; request information or assistance through our website; participate in surveys, promotions, or other marketing activities; or provide contact information at a Synozur-sponsored event.</p>
 <p>We also collect the Internet protocol (IP) address used to connect your computer to the Internet, email address, computer and connection information, and session information including page response times and length of visits.</p>
@@ -1198,31 +1359,60 @@ function renderPrivacy(): string {
 <h2>Your Rights</h2>
 <p>Depending on your jurisdiction, you may have rights to access, correct, delete, or restrict processing of your personal information. To exercise these rights or ask a privacy question, please contact us at <a href="/contact">synozur.com/contact</a>.</p>
 <h2>Changes to This Statement</h2>
-<p>We may update this privacy statement from time to time. We will notify you of any material changes by posting the updated statement on this page with a revised effective date.</p>`;
+<p>We may update this privacy policy from time to time. We will notify you of any material changes by posting the updated policy on this page with a revised effective date.</p>`;
 }
 
 function renderTerms(): string {
   return `<h1>Terms of Service</h1>
-<p>The Synozur Alliance LLC \u00b7 Effective Date: May 25, 2026 \u00b7 Last Modified: May 25, 2026</p>
+<p>The Synozur Alliance LLC \u00b7 Effective Date: May 25, 2026 \u00b7 Last Modified: August 31, 2026</p>
 <h2>1. Welcome to Synozur</h2>
-<p>These Terms of Service (\u201cTerms\u201d) govern your access to and use of Synozur\u2019s website (www.synozur.com), free public tools (such as Orion), commercial software subscriptions (such as Vega and Orbit), and related services (collectively, the \u201cServices\u201d). By accessing or using our Services, you agree to be bound by these Terms.</p>
-<p>Synozur, inspired by the ancient Greek term for the North Star, is dedicated to guiding organizations through transformation with empathy and precision. Our mission is to make the desirable achievable.</p>
+<p>We're glad you're here. At Synozur, we believe in clarity and transparency. These Terms of Service (\u201cTerms\u201d) govern your access to and use of Synozur\u2019s website (www.synozur.com), free public tools (such as Orion), commercial software subscriptions (such as Vega and Orbit), and related services (collectively, the \u201cServices\u201d). By accessing or using our Services, you agree to be bound by these Terms.</p>
+<p>Synozur, inspired by the ancient Greek term for the North Star, is dedicated to guiding organizations through transformation with empathy and precision. Our mission is to make the desirable achievable. These Terms reflect our commitment to building trust through genuine care and partnership.</p>
 <h2>2. Acceptance of Terms</h2>
-<p>By accessing, browsing, or using any of our Services you acknowledge that you have read, understood, and agree to be bound by these Terms, as well as our <a href="/privacy">Privacy Policy</a>. If you do not agree to these Terms, please do not use our Services.</p>
+<p>By accessing, browsing, or using any of our Services\u2014whether free or paid\u2014you acknowledge that you have read, understood, and agree to be bound by these Terms, as well as our <a href="/privacy">Privacy Policy</a>. If you do not agree to these Terms, please do not use our Services. If you are using our Services on behalf of an organization, you represent and warrant that you have the authority to bind that organization to these Terms.</p>
 <h2>3. Free Public Tools (Including Orion)</h2>
-<p>Synozur offers certain tools and resources at no cost to the public, including Orion, our AI-powered transformation assessment tool, on an \u201cas is\u201d and \u201cas available\u201d basis without any warranty of any kind. We reserve the right to modify, suspend, temporarily disable, or permanently discontinue any free tool at any time, with or without notice.</p>
-<h2>4. Commercial and Paid Software Subscriptions</h2>
-<p>Synozur also offers commercial software subscriptions and paid services, including Orbit (our market analytics and GTM platform) and Vega (our strategic operating system platform). These services are governed by separate written agreements. In the event of any conflict between these Terms and a separate written commercial agreement, the commercial agreement will control for the paid services covered by that agreement.</p>
-<h2>5. Intellectual Property</h2>
-<p>All content on synozur.com \u2014 including text, graphics, logos, and software \u2014 is the property of The Synozur Alliance LLC or its licensors and is protected by intellectual property laws. You may not reproduce, distribute, or create derivative works without our express written permission.</p>
-<h2>6. Limitation of Liability</h2>
-<p>To the fullest extent permitted by law, Synozur shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of our Services.</p>
-<h2>7. Governing Law</h2>
-<p>These Terms are governed by the laws of the State of Delaware, USA, without regard to conflict of law principles.</p>
-<h2>8. Changes to These Terms</h2>
-<p>We reserve the right to modify these Terms at any time. Material changes will be communicated with reasonable notice. Your continued use of our Services after the effective date of any changes constitutes your acceptance of the updated Terms.</p>
-<h2>9. Contact</h2>
-<p>For questions about these Terms, please contact us at <a href="/contact">synozur.com/contact</a>.</p>`;
+<p>Synozur offers certain tools and resources at no cost to the public, including Orion, our AI-powered transformation assessment tool. Free public tools are provided on an \u201cas is\u201d and \u201cas available\u201d basis. We cannot guarantee continuous, uninterrupted, or secure access; error-free operation; specific uptime or performance; or that use of a tool will meet your requirements. We may modify, suspend, disable, discontinue, or require commercial terms for any free tool at any time, with or without notice. Free tools are provided without warranties, and you use them entirely at your own risk.</p>
+<h2>4. Commercial and Paid Software Subscriptions (Including Vega)</h2>
+<p>Synozur offers commercial software subscriptions and paid services, including Orbit, our market analytics and GTM platform, Vega, our strategic operating system platform, advisory services, and other premium offerings. These services are governed by separate written agreements covering subscription terms, service levels, support, pricing, licenses, confidentiality, data protection, and any data processing addendum. If these Terms conflict with a separate written commercial agreement, the commercial agreement controls for the paid services covered by it.</p>
+<p>Trial or pilot access is offered at Synozur's discretion and may be revoked, modified, limited, or terminated at any time. Trial features and terms may differ from paid subscriptions and do not guarantee conversion or ongoing availability. Changes to pricing, features, service levels, or other commercial terms will be communicated with reasonable advance notice where appropriate; new subscriptions are governed by the terms in effect when subscribed.</p>
+<h2>5. User Accounts and Registration</h2>
+<p>For Services requiring an account, you agree to provide accurate information, keep it current, protect your credentials, promptly report unauthorized access, accept responsibility for account activity, and not share access. We may suspend or terminate accounts that violate these Terms or remain inactive for extended periods. You may request cancellation by contacting <a href="mailto:contactus@synozur.com">contactus@synozur.com</a> or using available account-management features. Synozur is not liable for suspension, termination, or cancellation made under these Terms or a separate written agreement.</p>
+<h2>6. Your Consent and Our Communications</h2>
+<p>By using our Services, providing contact information, or registering for a tool or resource, you consent to communications about product updates, marketing, educational content, surveys, advisory services, newsletters, technical support, account matters, and important Service notices. Communications may be sent by email, phone, SMS/text message where provided, or other electronic means.</p>
+<p>You may opt out of marketing communications by using an unsubscribe link, contacting us, or updating your preferences. Transactional and service-related communications may continue. We will honor opt-out requests within a reasonable timeframe, typically within 10 business days. Our <a href="/privacy">Privacy Policy</a> explains how information is collected, used, shared, protected, and retained.</p>
+<p>We do not disclose personally identifiable data without consent except as described in our Privacy Policy. We may conduct anonymized research using aggregated data to identify generalized trends; such research will not expose individual identities or sensitive information.</p>
+<h2>7. Intellectual Property Rights</h2>
+<p>All content, software, tools, designs, graphics, text, code, trademarks, service marks, and other materials available through the Services are owned by or licensed to Synozur and protected by intellectual property laws. Subject to these Terms, Synozur grants a limited, non-exclusive, non-transferable, non-sublicensable, revocable license to use the Services for their intended purposes. You may not copy, modify, distribute, publicly display, scrape, reverse engineer, or remove proprietary notices without permission.</p>
+<h2>8. Your Responsibilities and Prohibited Conduct</h2>
+<p>You must use the Services lawfully, provide truthful information, comply with applicable laws, and respect Synozur's and others' rights. You may not interfere with or overload the Services, seek unauthorized access, transmit malware, harass others, commit fraud, scrape or data mine without permission, publish unlawful or infringing content, violate connected platforms' policies, impersonate others, probe or breach security, derive source code or underlying models and methods, use credential-stuffing or cracking tools, process personal information without required authority, or commercially exploit the Services without written authorization.</p>
+<h2>9. Content You Publish Through the Services</h2>
+<p>Some Services, including Orbit, allow you to author, schedule, and publish content to connected channels such as LinkedIn, X, Facebook, Instagram, and Bluesky. You retain ownership of content you create, upload, or publish. You grant Synozur a limited license to host, store, process, display, and transmit it only as needed to operate the Services.</p>
+<p>You represent that you have the rights and permissions for Your Content, that it does not infringe others' rights, that it complies with applicable law and connected-platform terms, and that you are authorized to act for connected organizations and accounts. You may disconnect an account at any time; disconnection removes Synozur's stored credentials but does not unpublish content already posted.</p>
+<h3>9.4 Sensitive Materials and Secure Submission</h3>
+<p>Do not submit confidential, sensitive, regulated, privileged, financial, health, payment card, or highly restricted information unless the applicable Service is expressly designed and authorized for it and you use the secure submission method provided. Email is not a secure method for transmitting sensitive information. Contact Synozur for secure-transfer instructions when needed.</p>
+<h3>9.5 Enforcement</h3>
+<p>Synozur may review, remove, or refuse to publish content that we believe in good faith violates these Terms, applicable law, or a connected platform's policies. We may suspend access or integrations if use causes or may cause platform warnings, restrictions, suspension, or enforcement against Synozur.</p>
+<h2>10. Third-Party Services and Links</h2>
+<p>Our Services may link to or integrate with third-party services such as Microsoft 365, SharePoint, and social platforms. Those services remain subject to their own terms and privacy policies. Synozur acts within the permissions you grant and is not responsible for third-party content, policies, API changes, scope availability, or service interruptions.</p>
+<h2>11. Limitation of Liability</h2>
+<p>To the maximum extent permitted by law, Synozur and its affiliates, officers, directors, employees, agents, and licensors will not be liable for damages arising from free public tools. Total liability for claims related to free public tools will not exceed ten dollars ($10.00 USD). Liability for paid services is governed by the applicable commercial agreement; absent such terms, these limitations apply. Some jurisdictions do not allow these limitations.</p>
+<h2>12. Disclaimer of Warranties</h2>
+<p>Except as expressly provided in a separate commercial agreement, the Services are provided \u201cas is\u201d and \u201cas available\u201d without warranties. Synozur disclaims warranties of merchantability, fitness for a particular purpose, title, and non-infringement, and does not warrant uninterrupted, secure, or error-free operation, accurate results, correction of defects, or that the Services will meet your expectations. You use the Services at your own risk.</p>
+<h2>13. Indemnification</h2>
+<p>You agree to defend, indemnify, and hold harmless Synozur, its affiliates, and their representatives from claims, liabilities, damages, losses, costs, and reasonable attorneys' fees arising from your use or misuse of the Services, violation of these Terms or law, violation of another party's rights, Your Content, or breach of your representations and warranties.</p>
+<h2>14. Termination</h2>
+<p>We may suspend or terminate access to the Services in whole or in part at any time, with or without notice, if we believe you violated these Terms, created risk, or used the Services unlawfully, harmfully, inappropriately, or inconsistently with their intended operation. You may stop using the Services or request account termination. Commercial termination is governed by the applicable commercial agreement.</p>
+<p>Upon termination, your right to use the Services ceases, we may delete your account and associated data, and surviving provisions remain in effect. We may investigate suspected violations, security incidents, or misuse and cooperate with law enforcement, regulators, affected platforms, service providers, and other appropriate parties.</p>
+<h2>15. Changes to These Terms</h2>
+<p>We may modify these Terms, update the Effective Date, post revised Terms at www.synozur.com, and notify users of material changes by email or website notice. Continued use after the effective date constitutes acceptance.</p>
+<h2>16. Governing Law and Jurisdiction</h2>
+<p>These Terms are governed by Washington law. Legal actions related to these Terms or the Services must be brought exclusively in state or federal courts located in Snohomish County, Washington, and you consent to that jurisdiction and venue.</p>
+<h2>17. Dispute Resolution and Arbitration</h2>
+<p>For disputes valued below $10,000, the parties will first attempt in good faith to resolve the matter through informal negotiation. If unresolved after 30 days, either party may pursue the matter in the courts described in Section 16. Either party may seek injunctive or other equitable relief to prevent irreparable harm.</p>
+<h2>18. Additional Terms</h2>
+<p>These Terms, the <a href="/privacy">Privacy Policy</a>, and any separate written commercial agreement are the entire agreement. No waiver is continuing, invalid provisions will be modified to the minimum extent necessary, you may not assign these Terms without consent, Synozur may assign them without restriction, and Synozur is not liable for delays caused by events outside its reasonable control.</p>
+<h2>19. Contact Information</h2>
+<p>The Synozur Alliance LLC, 13300 Bothell-Everett Highway, Suite 303, Mill Creek, WA 98012, United States. Email: <a href="mailto:contactus@synozur.com">contactus@synozur.com</a>. Website: <a href="https://www.synozur.com">https://www.synozur.com</a>. Privacy Policy: <a href="/privacy">https://www.synozur.com/privacy</a>.</p>`;
 }
 
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
@@ -1271,6 +1461,8 @@ async function renderMainContent(
         return renderLibraryList(origin);
       case "webinars":
         return renderWebinarsList(origin);
+      case "polaris":
+        return renderPolarisList(origin);
       case "about":
         return renderAbout();
       case "careers":
@@ -1288,7 +1480,7 @@ async function renderMainContent(
 
   switch (section) {
     case "insights":
-      return renderInsightDetail(slug, og);
+      return renderInsightDetail(slug, og, origin);
     case "services":
       return renderServiceDetail(slug, og);
     case "services-overview":
@@ -1317,6 +1509,8 @@ async function renderMainContent(
       return renderCollateralDetail(slug, og, "library");
     case "webinars":
       return renderCollateralDetail(slug, og, "webinars");
+    case "polaris":
+      return renderPolarisDetail(slug, og);
     default:
       return "";
   }
@@ -1340,4 +1534,41 @@ export async function buildAgentPageHtml(pathname: string): Promise<string> {
     main = `<h1>${htmlEscape(og.title)}</h1>\n<p>${htmlEscape(og.description)}</p>`;
   }
   return renderAgentDocument(og, main);
+}
+
+async function renderPolarisDetail(slug: string, og: OgData): Promise<string> {
+  const [row] = await db
+    .select({
+      episodeNumber: polarisEpisodesTable.episodeNumber,
+      guestName: polarisEpisodesTable.guestName,
+      summary: polarisEpisodesTable.summary,
+      transcriptHtml: polarisEpisodesTable.transcriptHtml,
+      publishedAt: polarisEpisodesTable.publishedAt,
+    })
+    .from(polarisEpisodesTable)
+    .where(
+      and(
+        eq(polarisEpisodesTable.slug, slug),
+        isNull(polarisEpisodesTable.deletedAt),
+        eq(polarisEpisodesTable.active, true),
+        eq(polarisEpisodesTable.status, "published"),
+        publishedAtNullOrReachedSql(polarisEpisodesTable.publishedAt),
+        sql`(${polarisEpisodesTable.unpublishedAt} is null or ${polarisEpisodesTable.unpublishedAt} > now())`,
+      ),
+    )
+    .limit(1);
+  if (!row) return "";
+  const date = fmtDate(row.publishedAt);
+  const meta = [
+    row.episodeNumber ? `Episode ${row.episodeNumber}` : "",
+    row.guestName ? `Guest: ${htmlEscape(row.guestName)}` : "",
+    date,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const summary = row.summary ? `<p>${htmlEscape(row.summary)}</p>` : "";
+  const transcript = row.transcriptHtml
+    ? `<section><h2>Transcript</h2>${sanitizeCmsHtml(row.transcriptHtml)}</section>`
+    : "";
+  return `<h1>${htmlEscape(og.title)}</h1>${meta ? `<p>${meta}</p>` : ""}${summary}${transcript}`;
 }

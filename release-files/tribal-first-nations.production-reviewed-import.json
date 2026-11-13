@@ -1,0 +1,218 @@
+{
+  "format": "synozur-landing-page",
+  "version": 1,
+  "page": {
+    "slug": "tribal-first-nations",
+    "title": "Tribal Nations & First Nations",
+    "subtitle": "The Champion System helps U.S. Tribal Nations and Canadian First Nations build sustainable AI capability—designed in partnership, grounded in community priorities, and governed by each Nation.",
+    "description": "Explore the Champion System: a community-centered approach to champion networks, practical AI adoption, and sustained capability governed by each Nation.",
+    "heroImage": "/api/storage/objects/uploads/4579c651-6af8-4d4e-9588-48a4a1b18392",
+    "status": "published",
+    "blocks": [
+      {
+        "type": "hero",
+        "eyebrow": "Tribal Nations & First Nations",
+        "title": "Build trusted AI capability. Governed by your Nation.",
+        "subtitle": "The Champion System helps U.S. Tribal Nations and Canadian First Nations build sustainable AI capability—designed in partnership, grounded in community priorities, and governed by each Nation.",
+        "theme": "nebula"
+      },
+      {
+        "type": "cta",
+        "heading": "",
+        "theme": "nebula",
+        "buttons": [
+          {
+            "label": "Start a context conversation",
+            "href": "/start/tribal-nations-first-nations-workshop",
+            "variant": "primary"
+          },
+          {
+            "label": "Explore the Champion System",
+            "href": "#one-system-capability-built-within-your-nation",
+            "variant": "secondary"
+          }
+        ]
+      },
+      {
+        "type": "richText",
+        "heading": "Access to AI is only the beginning.",
+        "bodyHtml": "<p>AI creates value when it fits real work, reflects community priorities, and earns people’s trust. Introducing tools alone does not build the skills, relationships, or local ownership needed to sustain their use.</p><p>Your Nation defines the priorities. Together, we build the shared vision, champion capacity, practical experience, and governance that help turn those priorities into lasting capability.</p>"
+      },
+      {
+        "type": "richText",
+        "heading": "One system. Capability built within your Nation.",
+        "bodyHtml": "<p>The Champion System brings leadership alignment, foundational skills, champion development, and focused AI Labs into one coordinated approach.</p><p>It supports the full North Star Method™ journey—from understanding your starting point to sustaining trusted adoption. Aurora™, our standalone champion-network program, is the flagship offer; a Champion Module can also be delivered within the AI &amp; North Star Sprint.</p>"
+      },
+      {
+        "type": "cardGrid",
+        "heading": "Five roles that support local capability",
+        "cards": [
+          {
+            "title": "Community Vision Holder",
+            "description": "Connects practical AI opportunities to the Nation’s priorities and long-term direction."
+          },
+          {
+            "title": "Relationship Steward",
+            "description": "Builds the relationships and shared understanding that support trust and participation."
+          },
+          {
+            "title": "Capacity Builder",
+            "description": "Helps people develop skills, confidence, and the ability to support others."
+          },
+          {
+            "title": "Solution Creator",
+            "description": "Co-creates practical tools and approaches around community and departmental needs."
+          },
+          {
+            "title": "Trusted Voice",
+            "description": "Brings questions, experience, and community perspectives into decisions about adoption."
+          }
+        ]
+      },
+      {
+        "type": "cardGrid",
+        "heading": "A starting point shaped around your context.",
+        "intro": "Begin with a conversation about your priorities. From there, we define the appropriate next step together. Each offer is scoped and fixed-fee, designed around community-defined benefit—not billable hours.",
+        "cards": [
+          {
+            "code": "Relationship & Context",
+            "title": "Context Session + Champion Readout",
+            "description": "Listen to leadership and program stakeholders, understand priorities, and assess the champion landscape through Orion. A shared readout provides a starting point for deciding what comes next."
+          },
+          {
+            "code": "Readout & Activation",
+            "title": "Champion Module inside the AI & North Star Sprint",
+            "description": "Embed a champion track within the Sprint cadence. DLT canvases on Nebula help frame opportunities and move from context to structured activation."
+          },
+          {
+            "code": "Flagship program",
+            "title": "Aurora™",
+            "description": "Stand up, run, and sustain a champion network with a Nation-defined governance model. Focused AI Labs bring people together to co-create agents, Copilot skills, and templates for practical use."
+          },
+          {
+            "code": "Sustain & Scale",
+            "title": "Champion Sustain + License & Certify",
+            "description": "Support a Nation-run program with continued measurement, training, Synozur IP, and enabling tools. Quarterly Orion assessments help track progress. Capability can extend across departments, related entities, or partner Nations when invited."
+          }
+        ]
+      },
+      {
+        "type": "cta",
+        "heading": "",
+        "theme": "light",
+        "buttons": [
+          {
+            "label": "Discuss your starting point",
+            "href": "/start/tribal-nations-first-nations-workshop",
+            "variant": "primary"
+          }
+        ]
+      },
+      {
+        "type": "cardGrid",
+        "heading": "From shared understanding to sustained capability.",
+        "intro": "North Star Method™",
+        "cards": [
+          {
+            "code": "01",
+            "title": "Assess",
+            "description": "Understand community priorities and practical opportunities. Orion establishes a baseline for champion archetypes and adoption maturity; AI Art of the Possible helps align leadership."
+          },
+          {
+            "code": "02",
+            "title": "Define",
+            "description": "Agree outcomes, champion opportunities, and an operating rhythm. Vega supports the plan, while DLT canvases help frame the work."
+          },
+          {
+            "code": "03",
+            "title": "Deliver",
+            "description": "Put the plan into practice through Vega’s Focus Rhythm and focused AI Labs, with Solution Creators co-creating around community needs."
+          },
+          {
+            "code": "04",
+            "title": "Outcomes",
+            "description": "Sustain a trusted AI operating model with Zenith, Orion, Vega, and Nebula. Reinforce governance through day-to-day operations and use pre/post assessment to understand progress."
+          }
+        ]
+      },
+      {
+        "type": "richText",
+        "heading": "Measure what matters to your Nation.",
+        "bodyHtml": "<p>Success should reflect the outcomes your Nation values: stronger staff capacity, time returned to community priorities, and practical capability that remains locally owned.</p><p>Together, we agree what to measure and how the evidence will inform decisions. Measures can include:</p><ul><li>Changes in adoption maturity through Orion pre/post assessment.</li><li>Active use and activation of Trusted Voices.</li><li>Sentiment and reuse of practical artifacts.</li><li>Governance telemetry through Zenith.</li></ul><p>These are measures of progress—not promises of a predetermined result.</p><h3>Your Nation defines the boundaries.</h3><p>Your Nation’s designated leaders and advisers guide the requirements for data access, human oversight, approvals, and accountability. The program is shaped around those decisions, with governance reinforced through operations.</p>"
+      },
+      {
+        "type": "cardGrid",
+        "heading": "Trust and sovereignty are part of the context.",
+        "intro": "Explore perspectives on AI, sovereignty, and the relationships that shape responsible adoption.",
+        "cards": [
+          {
+            "title": "Tribal Nations, AI, and the Sovereignty Question",
+            "url": "https://www.synozur.com/insights/tribal-nations-ai-and-the-sovereignty-question"
+          }
+        ]
+      },
+      {
+        "type": "faq",
+        "heading": "FAQs",
+        "items": [
+          {
+            "q": "Who is this for?",
+            "a": "U.S. Tribal Nations, Canadian First Nations, and Indigenous organizations seeking practical AI adoption with local ownership. Participants may include leadership, program teams, educators, digital leads, and Nation-owned enterprises."
+          },
+          {
+            "q": "Do we need to choose an AI platform first?",
+            "a": "No. The initial conversation starts with your priorities, constraints, and context—not a predetermined platform."
+          },
+          {
+            "q": "What happens in the first conversation?",
+            "a": "We listen to your goals, discuss where AI could support community priorities, and consider appropriate next steps. An assessment and shared readout are scoped separately; they are not included simply by booking the initial conversation."
+          },
+          {
+            "q": "How is Aurora different from the Sprint Champion Module?",
+            "a": "Aurora is a standalone program to establish, run, and sustain a champion network. The Champion Module embeds a champion track within the AI & North Star Sprint."
+          },
+          {
+            "q": "Who governs the program?",
+            "a": "The governance model is defined with your Nation. Your designated leaders and advisers guide decision rights, data requirements, oversight, and approvals."
+          },
+          {
+            "q": "Can the program grow beyond one department?",
+            "a": "Yes. Capability can extend across departments, related entities, or partner Nations when invited, while remaining locally governed."
+          }
+        ]
+      },
+      {
+        "type": "cta",
+        "heading": "Start with your priorities.",
+        "body": "One conversation to understand your context. A practical next step defined together.",
+        "theme": "nebula",
+        "buttons": [
+          {
+            "label": "Start a context conversation",
+            "href": "/start/tribal-nations-first-nations-workshop",
+            "variant": "primary"
+          }
+        ]
+      }
+    ],
+    "seoTitle": "Tribal Nations & First Nations AI | The Synozur Alliance",
+    "seoDescription": "Build trusted AI capability with the Champion System for Tribal Nations and First Nations—community-centered, measured responsibly, and locally governed.",
+    "seoCanonicalUrl": "/tribal-first-nations",
+    "ogImageUrl": "/og/tribal-first-nations-champion-system.jpg",
+    "unpublishedAt": null,
+    "featured": false,
+    "libraryListed": true,
+    "featuredRank": null,
+    "pillar": null,
+    "serviceId": null,
+    "solutionId": null,
+    "tags": [
+      "Tribal Nations",
+      "First Nations",
+      "AI Adoption",
+      "Governance"
+    ],
+    "active": true,
+    "sourceId": null
+  }
+}

@@ -15,8 +15,10 @@ import {
   workshopsTable,
   siteSettingsTable,
   faqCategoriesTable,
-  faqItemsTable,
   jobPostingsTable,
+  polarisEpisodesTable,
+  landingPagesTable,
+  bookingsTable,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { runAudit, applyAutofill } from "../lib/seoAudit";
@@ -73,6 +75,7 @@ const STATIC_ROUTES: Entry[] = [
   { loc: "/proof", changefreq: "monthly", priority: 0.6 },
   { loc: "/fit", changefreq: "monthly", priority: 0.6 },
   { loc: "/book", changefreq: "monthly", priority: 0.6 },
+  { loc: "/resources", changefreq: "weekly", priority: 0.6 },
   { loc: "/faq", changefreq: "weekly", priority: 0.7 },
   { loc: "/careers", changefreq: "weekly", priority: 0.6 },
   { loc: "/privacy", changefreq: "yearly", priority: 0.3 },
@@ -135,8 +138,10 @@ export async function collectEntries(): Promise<Entry[]> {
     caseStudies,
     models,
     workshops,
+    polarisEpisodes,
     faqCategories,
-    faqItems,
+    landingPages,
+    bookings,
   ] = await Promise.all([
     db
       .select({ slug: postsTable.slug, updatedAt: postsTable.updatedAt, publishedAt: postsTable.publishedAt })
@@ -247,10 +252,29 @@ export async function collectEntries(): Promise<Entry[]> {
           eq(workshopsTable.active, true),
         ),
       ),
-    // FAQ deep links — one URL per visible item under a visible category.
-    // Drives per-question indexing so each Q&A can rank on its own keywords
-    // and show up as a distinct SERP / AIO citation. #108: now uses the
-    // shared artifact visibility filter (active + deletedAt + publish window).
+    // Polaris podcast episode pages at /polaris/:slug. Visibility mirrors the
+    // public /polaris listing: status=published, active=true, not deleted,
+    // publishedAt reached, unpublishedAt not yet reached.
+    db
+      .select({
+        slug: polarisEpisodesTable.slug,
+        updatedAt: polarisEpisodesTable.updatedAt,
+      })
+      .from(polarisEpisodesTable)
+      .where(
+        and(
+          isNull(polarisEpisodesTable.deletedAt),
+          eq(polarisEpisodesTable.active, true),
+          eq(polarisEpisodesTable.status, "published"),
+          publishedAtNullOrReachedSql(polarisEpisodesTable.publishedAt),
+          sql`(${polarisEpisodesTable.unpublishedAt} is null or ${polarisEpisodesTable.unpublishedAt} > now())`,
+        ),
+      )
+      .orderBy(desc(polarisEpisodesTable.publishedAt)),
+    // FAQ category pages — one URL per visible category. Item-level URLs
+    // (/faq/:category/:item) are excluded from the sitemap because they
+    // canonicalise to the category page; including thin single-question pages
+    // would harm overall crawl quality.
     db
       .select({
         id: faqCategoriesTable.id,
@@ -269,18 +293,28 @@ export async function collectEntries(): Promise<Entry[]> {
       ),
     db
       .select({
-        categoryId: faqItemsTable.categoryId,
-        slug: faqItemsTable.slug,
-        updatedAt: faqItemsTable.updatedAt,
+        slug: landingPagesTable.slug,
+        updatedAt: landingPagesTable.updatedAt,
+        seoCanonicalUrl: landingPagesTable.seoCanonicalUrl,
       })
-      .from(faqItemsTable)
+      .from(landingPagesTable)
       .where(
         and(
-          eq(faqItemsTable.active, true),
-          eq(faqItemsTable.status, "published"),
-          isNull(faqItemsTable.deletedAt),
-          sql`(${faqItemsTable.publishedAt} is null or ${faqItemsTable.publishedAt} <= now())`,
-          sql`(${faqItemsTable.unpublishedAt} is null or ${faqItemsTable.unpublishedAt} > now())`,
+          isNull(landingPagesTable.deletedAt),
+          eq(landingPagesTable.active, true),
+          eq(landingPagesTable.status, "published"),
+          sql`(${landingPagesTable.publishedAt} is null or ${landingPagesTable.publishedAt} <= now())`,
+          sql`(${landingPagesTable.unpublishedAt} is null or ${landingPagesTable.unpublishedAt} > now())`,
+        ),
+      ),
+    db
+      .select({ slug: bookingsTable.slug, updatedAt: bookingsTable.updatedAt })
+      .from(bookingsTable)
+      .where(
+        and(
+          eq(bookingsTable.active, true),
+          sql`(${bookingsTable.startsAt} is null or ${bookingsTable.startsAt} <= now())`,
+          sql`(${bookingsTable.endsAt} is null or ${bookingsTable.endsAt} > now())`,
         ),
       ),
   ]);
@@ -321,6 +355,8 @@ export async function collectEntries(): Promise<Entry[]> {
     entries.push(toEntry(`/case-studies/${c.slug}`, c.updatedAt));
   for (const m of models) entries.push(toEntry(`/models/${m.slug}`, m.updatedAt));
   for (const w of workshops) entries.push(toEntry(`/workshops/${w.slug}`, w.updatedAt));
+  for (const ep of polarisEpisodes)
+    entries.push(toEntry(`/polaris/${ep.slug}`, ep.updatedAt));
 
   // Careers — published job postings at /careers/jobs/:slug.
   const jobPostings = await db
@@ -332,18 +368,31 @@ export async function collectEntries(): Promise<Entry[]> {
     entries.push(toEntry(`/careers/jobs/${j.slug}`, j.publishedAt));
   }
 
-  // FAQ category landing pages and per-item deep links. Items only emit when
-  // their parent category is also published — otherwise the page would 404.
-  const faqCategoryById = new Map(
-    faqCategories.map((c) => [c.id, c] as const),
-  );
+  // FAQ category landing pages. Item-level URLs (/faq/:category/:item) are
+  // intentionally excluded — they set rel=canonical to the category page so
+  // Google consolidates indexing signals there rather than spreading them
+  // across 51+ thin single-question pages.
   for (const c of faqCategories) {
     entries.push(toEntry(`/faq/${c.slug}`, c.updatedAt));
   }
-  for (const it of faqItems) {
-    const cat = faqCategoryById.get(it.categoryId);
-    if (!cat) continue;
-    entries.push(toEntry(`/faq/${cat.slug}/${it.slug}`, it.updatedAt));
+
+  for (const page of landingPages) {
+    const path = `/${page.slug}`;
+    // Match landing-page.tsx: relative and same-origin overrides change the
+    // HTML canonical; external overrides only affect JSON-LD (HTML falls
+    // back to the page's own URL). Don't submit aliases or invent targets:
+    // canonical targets must qualify for the sitemap in their own right.
+    const override = page.seoCanonicalUrl?.trim() ?? "";
+    const canonicalPath = override.startsWith("/")
+      ? override
+      : override.startsWith(origin)
+        ? override.slice(origin.length) || "/"
+        : path;
+    if (canonicalPath !== path) continue;
+    entries.push(toEntry(path, page.updatedAt));
+  }
+  for (const booking of bookings) {
+    entries.push(toEntry(`/start/${booking.slug}`, booking.updatedAt));
   }
 
   // De-duplicate and absolutize.
@@ -520,33 +569,8 @@ router.get("/llms.txt", handleLlmsTxt);
  * No authentication required — the response contains only public content.
  * Short Cache-Control mirrors the socialBotRenderer middleware (5 min).
  */
-/**
- * GET /api/seo/route-status?path=/insights/my-post
- *
- * Lightweight publish-status probe consumed by the SPA edge layer
- * (`artifacts/synozur/server.mjs`). Returns `{status:'ok'|'not_found'|'gone'}`
- * so the edge can propagate the right HTTP status to crawlers/users while
- * still serving the SPA shell. See `lib/routeStatus.ts` for the matrix.
- *
- * Public — only reports a publish verdict for the public path, never
- * leaks row contents.
- */
-router.get("/seo/route-status", async (req, res): Promise<void> => {
-  const rawPath = typeof req.query.path === "string" ? req.query.path : "/";
-  const pathname = ("/" + rawPath.replace(/^\/+/, "")).split("?")[0].split("#")[0] || "/";
-  try {
-    const status = await resolveRouteStatus(pathname);
-    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=30");
-    res.json({ status });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: msg });
-  }
-});
-
 router.get("/og", async (req, res): Promise<void> => {
   const rawPath = typeof req.query.path === "string" ? req.query.path : "/";
-  // Normalise: must start with /, strip query/fragment from the path itself.
   const pathname = ("/" + rawPath.replace(/^\/+/, "")).split("?")[0].split("#")[0] || "/";
   try {
     const og = await resolveOgData(pathname);
@@ -561,6 +585,28 @@ router.get("/og", async (req, res): Promise<void> => {
 });
 
 /**
+ * GET /api/seo/route-status?path=/insights/my-post
+ *
+ * Lightweight publish-status probe consumed by the SPA edge layer
+ * (artifacts/synozur/server.mjs). Returns {status:'ok'|'not_found'|'gone'}.
+ * Public — only reports a publish verdict, never leaks row contents.
+ */
+router.get("/seo/route-status", async (req, res): Promise<void> => {
+  const rawPath = typeof req.query.path === "string" ? req.query.path : "/";
+  const pathname = ("/" + rawPath.replace(/^\/+/, "")).split("?")[0].split("#")[0] || "/";
+  try {
+    const status = await resolveRouteStatus(pathname);
+    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=30");
+    res.json({ status });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+/**
+ * GET /api/seo/page?path=/insights/my-post
+ *
  * Content-rich prerender for AI agents and search crawlers that issue plain
  * HTTP fetches (no JS execution). Unlike /og (meta + minimal body), this
  * returns a full document with the page's real content sourced from the DB,
@@ -631,10 +677,9 @@ router.get("/seo/audit", adminGuard, async (_req: import("express").Request, res
 
 /**
  * POST /api/seo/audit/autofill
- * Body: { ids?: Array<{kind, id}> }
- * Runs a fresh server-side audit and applies suggestions only to empty SEO
- * fields. Pass `ids` to restrict the operation to specific artifacts. Never
- * overwrites editor values.  Returns the number of rows touched per kind.
+ * Body: { ids?: { kind, id }[] }  (omit to apply to all findings)
+ * Re-runs the SEO audit server-side, optionally restricts to the provided
+ * {kind, id} list, then writes AI-generated descriptions back to the DB.
  */
 router.post("/seo/audit/autofill", adminGuard, async (req: import("express").Request, res: import("express").Response): Promise<void> => {
   const parsed = AutofillBodySchema.safeParse(req.body);
@@ -643,7 +688,6 @@ router.post("/seo/audit/autofill", adminGuard, async (req: import("express").Req
     return;
   }
   try {
-    // Always recompute findings server-side to avoid trusting client data.
     const report = await runAudit();
     let findings = report.findings;
     if (parsed.data.ids && parsed.data.ids.length > 0) {

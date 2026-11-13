@@ -42,9 +42,28 @@ async function serializePost(post: typeof postsTable.$inferSelect, opts: { inclu
   const tm = teamMembers.find((m) => m.userId === post.authorId) ?? null;
   const mediaMap = new Map(media.map((m) => [m.id, m.publicUrl]));
 
+  // Derive a single content-kind string from categories so callers (e.g.
+  // Orbit) don't have to parse the categories array themselves.  First
+  // matching slug wins; anything unrecognised falls back to "post".
+  const KIND_SLUG_MAP: Record<string, string> = {
+    "case-study": "case_study",
+    "case_study": "case_study",
+    whitepaper: "whitepaper",
+    video: "video",
+    workshop: "workshop",
+    webinar: "webinar",
+    podcast: "podcast",
+  };
+  const kind =
+    categories.reduce<string | null>((found, cat) => {
+      if (found) return found;
+      return KIND_SLUG_MAP[cat.slug] ?? null;
+    }, null) ?? "post";
+
   return {
     id: post.id,
     slug: post.slug,
+    kind,
     title: post.title,
     subtitle: post.subtitle ?? null,
     excerpt: post.excerpt ?? null,

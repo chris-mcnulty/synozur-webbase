@@ -5,6 +5,297 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface AvatarUploadResult {
+  /** Same-origin path to the uploaded public profile photo. */
+  avatarUrl: string;
+}
+
+export type ChapterPublicationStatus =
+  (typeof ChapterPublicationStatus)[keyof typeof ChapterPublicationStatus];
+
+export const ChapterPublicationStatus = {
+  idle: "idle",
+  queued: "queued",
+  processing: "processing",
+  ready: "ready",
+  failed: "failed",
+} as const;
+
+export type ChapterPublicationCheckStatus =
+  (typeof ChapterPublicationCheckStatus)[keyof typeof ChapterPublicationCheckStatus];
+
+export const ChapterPublicationCheckStatus = {
+  review: "review",
+  warning: "warning",
+  unmeasurable: "unmeasurable",
+} as const;
+
+export interface ChapterPublicationCheck {
+  status: ChapterPublicationCheckStatus;
+  detail: string;
+  /** @nullable */
+  seconds: number | null;
+  /** @nullable */
+  rmsDb: number | null;
+}
+
+export interface ChapterPublicationListeningChecks {
+  method: string;
+  requirementsUrl: string;
+  noiseFloor: ChapterPublicationCheck;
+  leadingRoomTone: ChapterPublicationCheck;
+  trailingRoomTone: ChapterPublicationCheck;
+}
+
+/**
+ * @nullable
+ */
+export type ChapterPublicationReport = {
+  rmsDb: number;
+  peakDb: number;
+  durationSeconds: number;
+  sampleRate: number;
+  bitrateKbps: number;
+  channels: number;
+  /** Advisory checks on the finished export, not ACX approval. Absent on older exports. */
+  listeningChecks?: ChapterPublicationListeningChecks;
+} | null;
+
+export interface ChapterPublication {
+  status: ChapterPublicationStatus;
+  /** @nullable */
+  error?: string | null;
+  /** @nullable */
+  audioBytes?: number | null;
+  /** @nullable */
+  report?: ChapterPublicationReport;
+}
+
+export interface ChapterAudioRateInput {
+  /**
+   * @minimum 0
+   * @maximum 1000000
+   */
+  perMillion: number;
+  /** @pattern ^[A-Z]{3}$ */
+  currency: string;
+  effectiveFrom: string;
+}
+
+export type ChapterAudioRate = ChapterAudioRateInput & {
+  id: string;
+  savedAt: string;
+};
+
+export interface ChapterAudioPricing {
+  currentRate: ChapterAudioRate | null;
+  canManageRates: boolean;
+}
+
+export interface ChapterAudioEstimateInput {
+  /**
+   * @minLength 1
+   * @maxLength 200000
+   */
+  text: string;
+  /** @maxLength 100000 */
+  notes?: string;
+  appendNotes?: boolean;
+  voice: string;
+}
+
+export interface ChapterAudioEstimate {
+  sourceCharacters: number;
+  billableCharacters: number;
+  /** @nullable */
+  estimatedCost: number | null;
+  /** @nullable */
+  currency: string | null;
+  /** @nullable */
+  rateId: string | null;
+}
+
+export interface ChapterAudioCurrencyCost {
+  currency: string;
+  amount: number;
+  uncertainAmount: number;
+  retryAmount: number;
+  sampleAmount: number;
+}
+
+export interface ChapterAudioUsage {
+  attempts: number;
+  submittedCharacters: number;
+  successfulCharacters: number;
+  uncertainCharacters: number;
+  rejectedCharacters: number;
+  unpricedCharacters: number;
+  retryCharacters: number;
+  sampleAttempts: number;
+  reusedSections: number;
+  chapterCount: number;
+  costs: ChapterAudioCurrencyCost[];
+}
+
+export interface ChapterAudioJobCost {
+  initialEstimate: ChapterAudioEstimate | null;
+  usage: ChapterAudioUsage;
+  legacyUsageGap: boolean;
+}
+
+export interface ChapterAudioUsageGroup {
+  id: string;
+  label: string;
+  usage: ChapterAudioUsage;
+}
+
+export interface ChapterAudioMonthlyCosts {
+  month: string;
+  timezone: string;
+  coverageStartedAt: string;
+  usage: ChapterAudioUsage;
+  byUser: ChapterAudioUsageGroup[];
+  byVoice: ChapterAudioUsageGroup[];
+}
+
+export interface ChapterAudioInput {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  title: string;
+  /**
+   * @minLength 1
+   * @maxLength 200000
+   */
+  text: string;
+  /** @maxLength 100000 */
+  notes?: string;
+  appendNotes?: boolean;
+  voice: string;
+}
+
+export interface ChapterAudioFailure {
+  at: string;
+  stage: string;
+  code: string;
+  attempt: number;
+  elapsedMs: number;
+  willRetry: boolean;
+}
+
+export type ChapterAudioJobStatus =
+  (typeof ChapterAudioJobStatus)[keyof typeof ChapterAudioJobStatus];
+
+export const ChapterAudioJobStatus = {
+  queued: "queued",
+  processing: "processing",
+  completed: "completed",
+  failed: "failed",
+  cancelled: "cancelled",
+  expired: "expired",
+  deleting: "deleting",
+} as const;
+
+export interface ChapterAudioJob {
+  id: string;
+  title: string;
+  voice: string;
+  status: ChapterAudioJobStatus;
+  wordCount: number;
+  totalChunks: number;
+  completedChunks: number;
+  createdAt: string;
+  expiresAt: string;
+  creatorName: string;
+  /** @nullable */
+  error?: string | null;
+  /** @nullable */
+  processingStage?: string | null;
+  diagnostics?: ChapterAudioFailure[];
+  /** @nullable */
+  durationSeconds?: number | null;
+  /** @nullable */
+  audioBytes?: number | null;
+  cost?: ChapterAudioJobCost;
+}
+
+export interface ChapterAudioHistory {
+  jobs: ChapterAudioJob[];
+  voices: string[];
+  configured: boolean;
+  maxWords: number;
+  retentionDays: number;
+  pricing: ChapterAudioPricing;
+}
+
+export interface ChapterAudioExtraction {
+  text: string;
+  notes: string;
+  warnings: string[];
+  wordCount: number;
+}
+
+export interface ChapterAudioActionResult {
+  ok: boolean;
+}
+
+export type BookingRecordFieldsScope =
+  (typeof BookingRecordFieldsScope)[keyof typeof BookingRecordFieldsScope];
+
+export const BookingRecordFieldsScope = {
+  general: "general",
+  offer: "offer",
+  conference: "conference",
+} as const;
+
+export interface BookingRecordFields {
+  /** @nullable */
+  slug?: string | null;
+  /** @minLength 1 */
+  title?: string;
+  /** @nullable */
+  teaser?: string | null;
+  /** @nullable */
+  descriptionHtml?: string | null;
+  embedUrl?: string;
+  scope?: BookingRecordFieldsScope;
+  /** @nullable */
+  startsAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  displayOrder?: number;
+  active?: boolean;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
+  /**
+   * Page-specific social preview image; null clears the override.
+   * @nullable
+   */
+  ogImageUrl?: string | null;
+  /** @nullable */
+  msBusinessId?: string | null;
+  /** @nullable */
+  msDefaultServiceId?: string | null;
+  /** @nullable */
+  msTimezone?: string | null;
+}
+
+export type BookingRecordInput = BookingRecordFields & {
+  [key: string]: unknown;
+} & Required<
+    Pick<BookingRecordFields & { [key: string]: unknown }, "title" | "embedUrl">
+  >;
+
+export type BookingRecord = BookingRecordFields & {
+  id: string;
+  slug: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export interface HealthStatus {
   status: string;
 }
@@ -279,6 +570,14 @@ export const RoleName = {
   editor: "editor",
   author: "author",
   contributor: "contributor",
+  client: "client",
+  site_admin: "site_admin",
+  content_author: "content_author",
+  hr: "hr",
+  internal: "internal",
+  customer: "customer",
+  registered: "registered",
+  account_manager: "account_manager",
 } as const;
 
 export type PostStatus = (typeof PostStatus)[keyof typeof PostStatus];
@@ -308,6 +607,31 @@ export interface CurrentUser {
   avatarUrl?: string | null;
   bio?: string | null;
   roles: RoleName[];
+}
+
+export interface EntraUserConflict {
+  error: string;
+  existingUserId: string;
+}
+
+export type EntraUserInputRolesItem =
+  (typeof EntraUserInputRolesItem)[keyof typeof EntraUserInputRolesItem];
+
+export const EntraUserInputRolesItem = {
+  editor: "editor",
+  content_author: "content_author",
+} as const;
+
+export interface EntraUserInput {
+  email: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  displayName?: string;
+  objectId?: string;
+  /** @minItems 1 */
+  roles: EntraUserInputRolesItem[];
 }
 
 export interface CmsUser {
@@ -929,6 +1253,12 @@ export interface PublicSiteSettings {
   tagLinkedinPartnerId?: string | null;
   /** @nullable */
   tagMetaPixelId?: string | null;
+  /**
+   * HubSpot portal ID used to load the tracking pixel on the public site. Populated from the HUBSPOT_PORTAL_ID env var; null when not configured. Portal IDs are public (they appear in the tracking script src) so it is safe to expose here.
+
+   * @nullable
+   */
+  tagHubspotPortalId?: string | null;
   /** @nullable */
   orgName?: string | null;
   /** @nullable */
@@ -3881,6 +4211,25 @@ export type NotFoundResponse = ErrorEnvelope;
  */
 export type BadRequestResponse = ErrorEnvelope;
 
+export type GetChapterAudioCostsParams = {
+  /**
+   * @pattern ^\d{4}-(0[1-9]|1[0-2])$
+   */
+  month?: string;
+};
+
+export type ExtractChapterAudioParams = {
+  filename: string;
+};
+
+export type DownloadChapterAudioParams = {
+  download?: boolean;
+};
+
+export type ListPublicBookings200 = {
+  items: BookingRecord[];
+};
+
 export type ListCmsPostsParams = {
   status?: PostStatus;
   authorId?: string;
@@ -4038,6 +4387,21 @@ export type ExportAuditLogCsvParams = {
   to?: string;
 };
 
+export type ListCmsUsersParams = {
+  /**
+   * All accounts is restricted to administrators. Content remains the default for author selectors.
+   */
+  scope?: ListCmsUsersScope;
+};
+
+export type ListCmsUsersScope =
+  (typeof ListCmsUsersScope)[keyof typeof ListCmsUsersScope];
+
+export const ListCmsUsersScope = {
+  content: "content",
+  all: "all",
+} as const;
+
 export type SetCmsUserRolesBody = {
   roles: RoleName[];
 };
@@ -4147,6 +4511,11 @@ export type ReplaceEventSessions200 = {
 };
 
 export type ListAdminFormSubmissionsParams = {
+  /**
+   * Only registrations for this exact event slug.
+   * @minLength 1
+   */
+  eventSlug?: string;
   formType?: string;
   search?: string;
   /**
@@ -4161,11 +4530,21 @@ export type ListAdminFormSubmissionsParams = {
 };
 
 export type ExportAdminFormSubmissionsParams = {
+  /**
+   * Only registrations for this exact event slug.
+   * @minLength 1
+   */
+  eventSlug?: string;
   formType?: string;
   search?: string;
 };
 
 export type RetryFailedAdminFormSubmissionsParams = {
+  /**
+   * Only registrations for this exact event slug.
+   * @minLength 1
+   */
+  eventSlug?: string;
   formType?: string;
   search?: string;
 };

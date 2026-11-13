@@ -77,6 +77,10 @@ interface NavItem {
   testId: string;
   badgeCount?: number;
   badgeTestId?: string;
+  /** Optional role allow-list (any match). Checked in addition to capability. */
+  roles?: readonly string[];
+  /** Hide outside Vite dev builds. */
+  devOnly?: boolean;
 }
 
 interface NavSection {
@@ -131,6 +135,7 @@ const SECTIONS: NavSection[] = [
       { href: "/library/white-papers", label: "White Papers", icon: BookOpenIcon, capability: "content.publish", testId: "nav-admin-white-papers" },
       { href: "/library/workshops", label: "Workshops", icon: GraduationCap, capability: "content.publish", testId: "nav-admin-workshops" },
       { href: "/library/polaris-episodes", label: "Polaris", icon: Headphones, capability: "content.publish", testId: "nav-admin-polaris" },
+      { href: "/chapter-audio", label: "Chapter Audio", icon: Headphones, roles: ["admin", "site_admin", "editor", "content_author"], testId: "nav-admin-chapter-audio" },
       { href: "/site-config/landing-pages", label: "Landing Pages", icon: LayoutTemplate, capability: "site.manage", testId: "nav-admin-landing-pages" },
     ],
   },
@@ -236,6 +241,11 @@ const SECTIONS: NavSection[] = [
 ];
 
 function itemVisible(item: NavItem, access: AccessLike): boolean {
+  if (item.devOnly && !import.meta.env.DEV) return false;
+  if (item.roles) {
+    const roles: readonly string[] = access?.cmsUser?.roles ?? [];
+    if (!roles.some((r) => item.roles!.includes(r))) return false;
+  }
   if (!item.capability) return true;
   return !!access?.hasCapability(item.capability);
 }

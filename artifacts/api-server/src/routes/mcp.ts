@@ -19,6 +19,18 @@ import { createMcpServer } from "../mcp/server.js";
 
 const router: IRouter = Router();
 
+/**
+ * Unauthenticated connectivity probe.  Orbit (and any other MCP client) can
+ * GET /api/mcp/ping to confirm the server is reachable before attempting a
+ * tool call.  A 200 here means "server up, check your Bearer token"; a
+ * network error means "wrong URL or server down".  Distinguishing those two
+ * failure modes is impossible when only the POST /api/mcp endpoint exists,
+ * because a bad token returns 401 and Orbit's .catch(()=>[]) silences it.
+ */
+router.get("/mcp/ping", (_req: Request, res: Response): void => {
+  res.json({ ok: true, service: "synozur-www-mcp" });
+});
+
 router.post(
   "/mcp",
   requireAuth,

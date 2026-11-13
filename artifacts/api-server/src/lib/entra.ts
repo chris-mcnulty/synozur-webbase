@@ -78,6 +78,21 @@ async function getAppOnlyGraphToken(tenantId: string): Promise<string | null> {
   }
 }
 
+export async function lookupEntraUser(tenantId: string, email: string): Promise<{ id: string; displayName?: string }> {
+  const token = await getAppOnlyGraphToken(tenantId);
+  if (!token) throw new Error("Directory lookup is unavailable. Enter the user's Object ID from Microsoft Entra → Users → user → Overview.");
+  const response = await fetch(`${GRAPH_BASE}/users/${encodeURIComponent(email)}?$select=id,displayName`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    throw new Error("Could not find this sign-in address with the app's directory permissions. Enter the user's Object ID from Microsoft Entra → Users → user → Overview.");
+  }
+  const user = await response.json() as { id?: string; displayName?: string };
+  if (!user.id) throw new Error("Microsoft returned no Object ID. Enter it from Microsoft Entra.");
+  return { id: user.id, displayName: user.displayName };
+}
+
 async function fetchGroupIds(token: string, objectId: string): Promise<string[]> {
   const groupIds: string[] = [];
   let next: string | null =
@@ -168,7 +183,7 @@ export async function reconcileEntraRoles(
   const entraManagedRoleIds = new Set(allMappedRoleRows.map((r) => r.roleId));
 
   const currentGrants = await db
-    .select({ roleId: userRoles.roleId, roleName: rolesTable.name })
+    .select({ roleId: userRoles.roleId, roleName: rolesTable.name, manuallyAssigned: userRoles.manuallyAssigned })
     .from(userRoles)
     .innerJoin(rolesTable, eq(userRoles.roleId, rolesTable.id))
     .where(eq(userRoles.userId, userId));
@@ -196,6 +211,7 @@ export async function reconcileEntraRoles(
   }
 
   for (const grant of currentGrants) {
+    if (grant.manuallyAssigned) continue;
     const isEntraManaged = entraManagedRoleIds.has(grant.roleId);
     if (!isEntraManaged) continue;
     if (targetRoleIds.has(grant.roleName)) continue;

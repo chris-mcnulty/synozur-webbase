@@ -52,7 +52,7 @@ export const STATIC_SERVICE_PILLARS: NavService[] = [
     ],
   },
   {
-    title: "Go-To-Market Transformation",
+    title: "Go-to-Market Transformation",
     slug: "go-to-market-transformation",
     solutions: [
       { title: "Brand and Messaging", slug: "brand-and-messaging" },

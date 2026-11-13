@@ -68,6 +68,66 @@ args = "test:image-attrs"
 task = "workflow.run"
 args = "test-proof-links"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:seo-audit-config"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:experiments-bucket"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:event-jsonld"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:polaris-meta-desc-guard"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:video-meta-desc-guard"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:insight-meta-desc-guard"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:event-meta-desc-guard"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:workshop-meta-desc-guard"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:collateral-meta-desc-guard"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:forms-hutk"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:hubspot-hutk"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:attribution"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:booking-share-image-api"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:booking-share-image-ui"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:page-readability"
+
 [[workflows.workflow]]
 name = "test:og-images"
 author = "agent"
@@ -206,7 +266,172 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pnpm --filter @workspace/api-server run test:proof-links"
+args = "pnpm --filter @workspace/api-server run test:proof-links && pnpm --filter @workspace/api-server run test:sitemap-faq"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:seo-audit-config"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run test:seo-audit-config"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:experiments-bucket"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run test:experiments-bucket"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:event-jsonld"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run test:event-jsonld"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:polaris-meta-desc-guard"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run test:polaris-meta-desc-guard"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:video-meta-desc-guard"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run test:video-meta-desc-guard"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:insight-meta-desc-guard"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run test:insight-meta-desc-guard"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:event-meta-desc-guard"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run test:event-meta-desc-guard"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:workshop-meta-desc-guard"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run test:workshop-meta-desc-guard"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:collateral-meta-desc-guard"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run test:collateral-meta-desc-guard"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:forms-hutk"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:forms-hutk"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:hubspot-hutk"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:hubspot-hutk"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:attribution"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run test:attribution"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:booking-share-image-api"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:booking-share-image"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:booking-share-image-ui"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "E2E_BASE_URL=http://localhost:80 pnpm --filter @workspace/synozur run test:booking-share-image"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test:page-readability"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur test:page-readability"
 
 [workflows.workflow.metadata]
 isValidation = true
@@ -231,3 +456,6 @@ SITE_URL = "https://www.synozur.com"
 
 [userenv.development]
 STORAGE_BACKEND = "spe"
+
+[userenv.production]
+HUBSPOT_PORTAL_ID = "49076134"

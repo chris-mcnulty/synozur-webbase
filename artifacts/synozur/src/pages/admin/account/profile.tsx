@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
+import type { AvatarUploadResult } from "@workspace/api-zod/types";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -17,6 +18,38 @@ export default function AdminProfile() {
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  async function uploadAvatar(file: File) {
+    if (file.size > 5 * 1024 * 1024 || file.size === 0) {
+      setUploadMessage("Choose a photo that is between 1 byte and 5 MB.");
+      return;
+    }
+    setUploading(true);
+    setUploadMessage("Uploading photo to Microsoft SharePoint Embedded…");
+    try {
+      const res = await fetch(`${BASE_PATH}/api/cms/profile/avatar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        credentials: "include",
+        body: file,
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        throw new Error(error?.error ?? (res.status === 413 ? "Photo must be 5 MB or smaller." : "Photo upload failed. Please try again."));
+      }
+      const result: AvatarUploadResult = await res.json();
+      setAvatarUrl(result.avatarUrl);
+      setUploadMessage("Photo uploaded. Click Save profile to apply it.");
+    } catch (err) {
+      setUploadMessage(err instanceof Error ? err.message : "Photo upload failed.");
+    } finally {
+      setUploading(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -28,10 +61,11 @@ export default function AdminProfile() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (uploading || saving) return;
     setSaving(true);
     try {
       const body: Record<string, string | null> = {
-        displayName: displayName.trim() || null,
+        ...(displayName.trim() ? { displayName: displayName.trim() } : {}),
         bio: bio.trim() || null,
         avatarUrl: avatarUrl.trim() || null,
       };
@@ -58,7 +92,7 @@ export default function AdminProfile() {
     }
   }
 
-  const avatarPreview = avatarUrl.trim() || user?.avatarUrl;
+  const avatarPreview = avatarUrl.trim();
 
   return (
     <AdminLayout
@@ -100,13 +134,34 @@ export default function AdminProfile() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="avatarUrl">Avatar URL</Label>
+            <Label htmlFor="avatar-file">Profile photo</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                ref={fileInput}
+                id="avatar-file"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                disabled={uploading || saving}
+                onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadAvatar(file); }}
+              />
+              <Button type="button" variant="outline" disabled={uploading || saving} onClick={() => fileInput.current?.click()} data-testid="button-upload-avatar">
+                {uploading ? "Uploading…" : "Upload photo"}
+              </Button>
+              {avatarUrl && <Button type="button" variant="ghost" disabled={uploading || saving} onClick={() => { setAvatarUrl(""); setUploadMessage("Photo removed from this form. Click Save profile to apply."); }}>Remove photo</Button>}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              JPEG, PNG or WebP, up to 5 MB. Stored in Microsoft SharePoint Embedded. Profile photos are public.
+            </p>
+            {uploadMessage && <p role="status" aria-live="polite" className="text-sm" data-testid="avatar-upload-status">{uploadMessage}</p>}
+            <Label htmlFor="avatarUrl">Or use a photo URL</Label>
             <Input
               id="avatarUrl"
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
               placeholder="https://example.com/photo.jpg"
-              type="url"
+              type="text"
+              disabled={uploading || saving}
             />
             <p className="text-xs text-muted-foreground">
               Shown as your thumbnail on blog post headers and OG images. Synced from Microsoft Entra on sign-in if left blank.
@@ -128,7 +183,7 @@ export default function AdminProfile() {
             </p>
           </div>
 
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving || uploading}>
             {saving ? "Saving…" : "Save profile"}
           </Button>
         </form>

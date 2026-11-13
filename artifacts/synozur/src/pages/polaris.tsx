@@ -124,6 +124,12 @@ export default function Polaris() {
       return 0;
     });
 
+  // Keep readable, equal-width tracks inside the existing site container.
+  // Five columns need both the widest container and enough featured episodes.
+  const featuredGridClassName = `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8${
+    featuredEpisodes.length >= 5 ? " min-[106.25rem]:grid-cols-5" : ""
+  }`;
+
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
@@ -213,7 +219,7 @@ export default function Polaris() {
               </h2>
             </div>
             {episodesQ.isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className={featuredGridClassName}>
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
@@ -229,7 +235,7 @@ export default function Polaris() {
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className={featuredGridClassName}>
                 {featuredEpisodes.map((e, i) => {
                   const detailHref = `/polaris/${e.slug}`;
                   return (

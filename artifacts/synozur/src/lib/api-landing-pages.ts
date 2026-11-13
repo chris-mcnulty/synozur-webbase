@@ -142,6 +142,7 @@ export interface LandingPageDto {
   publishedAt: string | null;
   unpublishedAt: string | null;
   featured: boolean;
+  libraryListed?: boolean;
   featuredRank: number | null;
   pillar: LandingPagePillar | null;
   serviceId: string | null;
@@ -167,6 +168,7 @@ export interface LandingPageInput {
   ogImageUrl?: string | null;
   unpublishedAt?: string | null;
   featured?: boolean;
+  libraryListed?: boolean;
   featuredRank?: number | null;
   pillar?: LandingPagePillar | null;
   serviceId?: string | null;
@@ -201,6 +203,7 @@ export interface LandingPageExport {
     // back to column defaults when these are absent.
     unpublishedAt?: string | null;
     featured?: boolean;
+    libraryListed?: boolean;
     featuredRank?: number | null;
     pillar?: LandingPagePillar | null;
     serviceId?: string | null;

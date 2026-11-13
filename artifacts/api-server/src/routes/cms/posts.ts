@@ -22,6 +22,10 @@ import {
 import { trimPostRevisions } from "../../lib/revisionRetention";
 import { submitIfTransitionedToGone } from "../../lib/seoUnpublishSubmit";
 import { reindexEditorialSourceSafe } from "../../lib/ai/reindexHook";
+import {
+  shortenSeoTitle,
+  shouldRefreshGeneratedSeoTitle,
+} from "../../lib/seoAudit";
 
 const router: IRouter = Router();
 
@@ -303,7 +307,16 @@ router.patch("/cms/posts/:id", requireAuth, async (req, res) => {
   const updates: Partial<typeof postsTable.$inferInsert> = {
     updatedAt: new Date(),
   };
-  if (d.title !== undefined) updates.title = d.title!;
+  const refreshGeneratedSeoTitle =
+    d.title !== undefined &&
+    shouldRefreshGeneratedSeoTitle({
+      priorPostTitle: post.title,
+      priorSeoTitle: post.seoTitle,
+      requestedSeoTitle: d.seoTitle,
+    });
+  if (d.title !== undefined) {
+    updates.title = d.title!;
+  }
   if (newSlug) updates.slug = newSlug;
   if (d.subtitle !== undefined) updates.subtitle = d.subtitle ?? null;
   if (d.bodyHtml !== undefined) updates.bodyHtml = d.bodyHtml ?? null;
@@ -319,6 +332,11 @@ router.patch("/cms/posts/:id", requireAuth, async (req, res) => {
   if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank ?? null;
   if (d.linkedSolutionId !== undefined) updates.linkedSolutionId = d.linkedSolutionId ?? null;
   if (d.authorId && hasRole(user, "admin", "editor")) updates.authorId = d.authorId;
+  // Apply this after copying the full editor form so an unchanged SEO field
+  // cannot overwrite the refreshed value. Deliberate SEO edits remain intact.
+  if (refreshGeneratedSeoTitle) {
+    updates.seoTitle = shortenSeoTitle(d.title!);
+  }
 
   const [updated] = await db
     .update(postsTable)

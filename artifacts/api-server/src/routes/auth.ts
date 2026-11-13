@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { findEntraSignInUser } from "../lib/entraIdentity";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -412,22 +413,7 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
     }
   }
 
-  // Upsert user by (authProvider, externalSubject). Fall back to email match
-  // for rows seeded before the externalSubject column existed.
-  let userRow = await db.query.usersTable.findFirst({
-    where: and(
-      eq(usersTable.authProvider, "entra"),
-      eq(usersTable.externalSubject, identity.externalSubject),
-    ),
-  });
-  if (!userRow && identity.email) {
-    const byEmail = await db.query.usersTable.findFirst({
-      where: eq(usersTable.email, identity.email),
-    });
-    if (byEmail && (!byEmail.externalSubject || byEmail.authProvider === "imported")) {
-      userRow = byEmail;
-    }
-  }
+  let userRow = await findEntraSignInUser(identity);
 
   const isNewEntraUser = !userRow;
   const orgId = linkedOrgId;
@@ -439,7 +425,7 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
         authProvider: "entra",
         email: identity.email ?? userRow.email,
         displayName: identity.displayName ?? userRow.displayName,
-        avatarUrl: identity.avatarUrl ?? userRow.avatarUrl,
+        avatarUrl: userRow.avatarUrl ?? identity.avatarUrl,
         entraTenantId: identity.entraTenantId ?? userRow.entraTenantId,
         entraObjectId: identity.entraObjectId ?? userRow.entraObjectId,
         lastSignInAt: new Date(),

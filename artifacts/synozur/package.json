@@ -11,9 +11,18 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:artifact-path": "node --test lib/artifactPath.test.mjs",
     "test:experiments-bucket": "tsx --test src/lib/experiments-bucket.test.ts",
+    "test:attribution": "tsx --test src/lib/attribution.test.ts",
     "test:event-jsonld": "tsx --test src/components/event-jsonld.test.ts",
     "test:seo-audit-config": "tsx --test src/pages/admin/marketing/seo-audit.test.ts",
+    "test:polaris-meta-desc-guard": "tsx --test src/pages/admin/library/polaris-episode-meta-desc-guard.test.ts",
+    "test:video-meta-desc-guard": "tsx --test src/pages/admin/library/video-meta-desc-guard.test.ts",
+    "test:insight-meta-desc-guard": "tsx --test src/pages/admin/library/insight-meta-desc-guard.test.ts",
+    "test:event-meta-desc-guard": "tsx --test src/pages/admin/library/event-meta-desc-guard.test.ts",
+    "test:workshop-meta-desc-guard": "tsx --test src/pages/admin/library/workshop-meta-desc-guard.test.ts",
+    "test:collateral-meta-desc-guard": "tsx --test src/pages/admin/library/collateral-meta-desc-guard.test.ts",
     "test:e2e": "playwright test",
+    "test:page-readability": "playwright test --config=playwright.page-readability.config.ts",
+    "test:booking-share-image": "playwright test --config=playwright.booking-share-image.config.ts --project=chromium",
     "test:e2e:install": "playwright install chromium"
   },
   "devDependencies": {

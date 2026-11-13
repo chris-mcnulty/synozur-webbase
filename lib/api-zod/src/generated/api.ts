@@ -7,6 +7,559 @@
  */
 import * as zod from "zod";
 
+export const estimateChapterAudioBodyTextMax = 200000;
+
+export const estimateChapterAudioBodyNotesMax = 100000;
+
+export const estimateChapterAudioBodyAppendNotesDefault = false;
+
+export const EstimateChapterAudioBody = zod.object({
+  text: zod.string().min(1).max(estimateChapterAudioBodyTextMax),
+  notes: zod.string().max(estimateChapterAudioBodyNotesMax).optional(),
+  appendNotes: zod
+    .boolean()
+    .default(estimateChapterAudioBodyAppendNotesDefault),
+  voice: zod.string(),
+});
+
+export const EstimateChapterAudioResponse = zod.object({
+  sourceCharacters: zod.number(),
+  billableCharacters: zod.number(),
+  estimatedCost: zod.number().nullable(),
+  currency: zod.string().nullable(),
+  rateId: zod.string().nullable(),
+});
+
+export const saveChapterAudioPricingBodyPerMillionMin = 0;
+export const saveChapterAudioPricingBodyPerMillionMax = 1000000;
+
+export const saveChapterAudioPricingBodyCurrencyRegExp = new RegExp(
+  "^[A-Z]{3}$",
+);
+
+export const SaveChapterAudioPricingBody = zod.object({
+  perMillion: zod
+    .number()
+    .min(saveChapterAudioPricingBodyPerMillionMin)
+    .max(saveChapterAudioPricingBodyPerMillionMax),
+  currency: zod.string().regex(saveChapterAudioPricingBodyCurrencyRegExp),
+  effectiveFrom: zod.string(),
+});
+
+export const saveChapterAudioPricingResponseOnePerMillionMin = 0;
+export const saveChapterAudioPricingResponseOnePerMillionMax = 1000000;
+
+export const saveChapterAudioPricingResponseOneCurrencyRegExp = new RegExp(
+  "^[A-Z]{3}$",
+);
+
+export const SaveChapterAudioPricingResponse = zod
+  .object({
+    perMillion: zod
+      .number()
+      .min(saveChapterAudioPricingResponseOnePerMillionMin)
+      .max(saveChapterAudioPricingResponseOnePerMillionMax),
+    currency: zod
+      .string()
+      .regex(saveChapterAudioPricingResponseOneCurrencyRegExp),
+    effectiveFrom: zod.string(),
+  })
+  .and(
+    zod.object({
+      id: zod.string(),
+      savedAt: zod.string(),
+    }),
+  );
+
+export const getChapterAudioCostsQueryMonthRegExp = new RegExp(
+  "^\\d{4}-(0[1-9]|1[0-2])$",
+);
+
+export const GetChapterAudioCostsQueryParams = zod.object({
+  month: zod.coerce
+    .string()
+    .regex(getChapterAudioCostsQueryMonthRegExp)
+    .optional(),
+});
+
+export const GetChapterAudioCostsResponse = zod.object({
+  month: zod.string(),
+  timezone: zod.string(),
+  coverageStartedAt: zod.string(),
+  usage: zod.object({
+    attempts: zod.number(),
+    submittedCharacters: zod.number(),
+    successfulCharacters: zod.number(),
+    uncertainCharacters: zod.number(),
+    rejectedCharacters: zod.number(),
+    unpricedCharacters: zod.number(),
+    retryCharacters: zod.number(),
+    sampleAttempts: zod.number(),
+    reusedSections: zod.number(),
+    chapterCount: zod.number(),
+    costs: zod.array(
+      zod.object({
+        currency: zod.string(),
+        amount: zod.number(),
+        uncertainAmount: zod.number(),
+        retryAmount: zod.number(),
+        sampleAmount: zod.number(),
+      }),
+    ),
+  }),
+  byUser: zod.array(
+    zod.object({
+      id: zod.string(),
+      label: zod.string(),
+      usage: zod.object({
+        attempts: zod.number(),
+        submittedCharacters: zod.number(),
+        successfulCharacters: zod.number(),
+        uncertainCharacters: zod.number(),
+        rejectedCharacters: zod.number(),
+        unpricedCharacters: zod.number(),
+        retryCharacters: zod.number(),
+        sampleAttempts: zod.number(),
+        reusedSections: zod.number(),
+        chapterCount: zod.number(),
+        costs: zod.array(
+          zod.object({
+            currency: zod.string(),
+            amount: zod.number(),
+            uncertainAmount: zod.number(),
+            retryAmount: zod.number(),
+            sampleAmount: zod.number(),
+          }),
+        ),
+      }),
+    }),
+  ),
+  byVoice: zod.array(
+    zod.object({
+      id: zod.string(),
+      label: zod.string(),
+      usage: zod.object({
+        attempts: zod.number(),
+        submittedCharacters: zod.number(),
+        successfulCharacters: zod.number(),
+        uncertainCharacters: zod.number(),
+        rejectedCharacters: zod.number(),
+        unpricedCharacters: zod.number(),
+        retryCharacters: zod.number(),
+        sampleAttempts: zod.number(),
+        reusedSections: zod.number(),
+        chapterCount: zod.number(),
+        costs: zod.array(
+          zod.object({
+            currency: zod.string(),
+            amount: zod.number(),
+            uncertainAmount: zod.number(),
+            retryAmount: zod.number(),
+            sampleAmount: zod.number(),
+          }),
+        ),
+      }),
+    }),
+  ),
+});
+
+export const listChapterAudioResponsePricingCurrentRateOneOnePerMillionMin = 0;
+export const listChapterAudioResponsePricingCurrentRateOneOnePerMillionMax = 1000000;
+
+export const listChapterAudioResponsePricingCurrentRateOneOneCurrencyRegExp =
+  new RegExp("^[A-Z]{3}$");
+
+export const ListChapterAudioResponse = zod.object({
+  jobs: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      voice: zod.string(),
+      status: zod.enum([
+        "queued",
+        "processing",
+        "completed",
+        "failed",
+        "cancelled",
+        "expired",
+        "deleting",
+      ]),
+      wordCount: zod.number(),
+      totalChunks: zod.number(),
+      completedChunks: zod.number(),
+      createdAt: zod.string(),
+      expiresAt: zod.string(),
+      creatorName: zod.string(),
+      error: zod.string().nullish(),
+      processingStage: zod.string().nullish(),
+      diagnostics: zod
+        .array(
+          zod.object({
+            at: zod.string(),
+            stage: zod.string(),
+            code: zod.string(),
+            attempt: zod.number(),
+            elapsedMs: zod.number(),
+            willRetry: zod.boolean(),
+          }),
+        )
+        .optional(),
+      durationSeconds: zod.number().nullish(),
+      audioBytes: zod.number().nullish(),
+      cost: zod
+        .object({
+          initialEstimate: zod.union([
+            zod.object({
+              sourceCharacters: zod.number(),
+              billableCharacters: zod.number(),
+              estimatedCost: zod.number().nullable(),
+              currency: zod.string().nullable(),
+              rateId: zod.string().nullable(),
+            }),
+            zod.null(),
+          ]),
+          usage: zod.object({
+            attempts: zod.number(),
+            submittedCharacters: zod.number(),
+            successfulCharacters: zod.number(),
+            uncertainCharacters: zod.number(),
+            rejectedCharacters: zod.number(),
+            unpricedCharacters: zod.number(),
+            retryCharacters: zod.number(),
+            sampleAttempts: zod.number(),
+            reusedSections: zod.number(),
+            chapterCount: zod.number(),
+            costs: zod.array(
+              zod.object({
+                currency: zod.string(),
+                amount: zod.number(),
+                uncertainAmount: zod.number(),
+                retryAmount: zod.number(),
+                sampleAmount: zod.number(),
+              }),
+            ),
+          }),
+          legacyUsageGap: zod.boolean(),
+        })
+        .optional(),
+    }),
+  ),
+  voices: zod.array(zod.string()),
+  configured: zod.boolean(),
+  maxWords: zod.number(),
+  retentionDays: zod.number(),
+  pricing: zod.object({
+    currentRate: zod.union([
+      zod
+        .object({
+          perMillion: zod
+            .number()
+            .min(listChapterAudioResponsePricingCurrentRateOneOnePerMillionMin)
+            .max(listChapterAudioResponsePricingCurrentRateOneOnePerMillionMax),
+          currency: zod
+            .string()
+            .regex(
+              listChapterAudioResponsePricingCurrentRateOneOneCurrencyRegExp,
+            ),
+          effectiveFrom: zod.string(),
+        })
+        .and(
+          zod.object({
+            id: zod.string(),
+            savedAt: zod.string(),
+          }),
+        ),
+      zod.null(),
+    ]),
+    canManageRates: zod.boolean(),
+  }),
+});
+
+export const createChapterAudioBodyTitleMax = 200;
+
+export const createChapterAudioBodyTextMax = 200000;
+
+export const createChapterAudioBodyNotesMax = 100000;
+
+export const createChapterAudioBodyAppendNotesDefault = false;
+
+export const CreateChapterAudioBody = zod.object({
+  title: zod.string().min(1).max(createChapterAudioBodyTitleMax),
+  text: zod.string().min(1).max(createChapterAudioBodyTextMax),
+  notes: zod.string().max(createChapterAudioBodyNotesMax).optional(),
+  appendNotes: zod.boolean().default(createChapterAudioBodyAppendNotesDefault),
+  voice: zod.string(),
+});
+
+export const ExtractChapterAudioQueryParams = zod.object({
+  filename: zod.coerce.string(),
+});
+
+export const ExtractChapterAudioResponse = zod.object({
+  text: zod.string(),
+  notes: zod.string(),
+  warnings: zod.array(zod.string()),
+  wordCount: zod.number(),
+});
+
+export const SampleChapterAudioParams = zod.object({
+  voice: zod.coerce.string(),
+});
+
+export const ActionChapterAudioParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  action: zod.enum(["cancel", "retry", "delete"]),
+});
+
+export const ActionChapterAudioResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+export const GetChapterPublicationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetChapterPublicationResponse = zod.object({
+  status: zod.enum(["idle", "queued", "processing", "ready", "failed"]),
+  error: zod.string().nullish(),
+  audioBytes: zod.number().nullish(),
+  report: zod
+    .object({
+      rmsDb: zod.number(),
+      peakDb: zod.number(),
+      durationSeconds: zod.number(),
+      sampleRate: zod.number(),
+      bitrateKbps: zod.number(),
+      channels: zod.number(),
+      listeningChecks: zod
+        .object({
+          method: zod.string(),
+          requirementsUrl: zod.string(),
+          noiseFloor: zod.object({
+            status: zod.enum(["review", "warning", "unmeasurable"]),
+            detail: zod.string(),
+            seconds: zod.number().nullable(),
+            rmsDb: zod.number().nullable(),
+          }),
+          leadingRoomTone: zod.object({
+            status: zod.enum(["review", "warning", "unmeasurable"]),
+            detail: zod.string(),
+            seconds: zod.number().nullable(),
+            rmsDb: zod.number().nullable(),
+          }),
+          trailingRoomTone: zod.object({
+            status: zod.enum(["review", "warning", "unmeasurable"]),
+            detail: zod.string(),
+            seconds: zod.number().nullable(),
+            rmsDb: zod.number().nullable(),
+          }),
+        })
+        .optional()
+        .describe(
+          "Advisory checks on the finished export, not ACX approval. Absent on older exports.",
+        ),
+    })
+    .nullish(),
+});
+
+export const PrepareChapterPublicationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DownloadChapterPublicationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DownloadChapterAudioParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DownloadChapterAudioQueryParams = zod.object({
+  download: zod.coerce.boolean().optional(),
+});
+
+export const DownloadChapterAudioHeader = zod.object({
+  Range: zod
+    .string()
+    .optional()
+    .describe(
+      "Single byte range. Responses may be capped to 1 MiB; continue at the returned end offset plus one.",
+    ),
+});
+
+/**
+ * @summary List visible booking calendars
+ */
+
+export const ListPublicBookingsResponse = zod.object({
+  items: zod.array(
+    zod
+      .object({
+        slug: zod.string().nullish(),
+        title: zod.string().min(1).optional(),
+        teaser: zod.string().nullish(),
+        descriptionHtml: zod.string().nullish(),
+        embedUrl: zod.string().optional(),
+        scope: zod.enum(["general", "offer", "conference"]).optional(),
+        startsAt: zod.coerce.date().nullish(),
+        endsAt: zod.coerce.date().nullish(),
+        displayOrder: zod.number().optional(),
+        active: zod.boolean().optional(),
+        seoTitle: zod.string().nullish(),
+        seoDescription: zod.string().nullish(),
+        ogImageUrl: zod
+          .string()
+          .nullish()
+          .describe(
+            "Page-specific social preview image; null clears the override.",
+          ),
+        msBusinessId: zod.string().nullish(),
+        msDefaultServiceId: zod.string().nullish(),
+        msTimezone: zod.string().nullish(),
+      })
+      .and(
+        zod.object({
+          id: zod.string(),
+          slug: zod.string(),
+          createdAt: zod.coerce.date(),
+          updatedAt: zod.coerce.date(),
+        }),
+      ),
+  ),
+});
+
+/**
+ * @summary Get a visible booking calendar
+ */
+export const GetPublicBookingParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const GetPublicBookingResponse = zod
+  .object({
+    slug: zod.string().nullish(),
+    title: zod.string().min(1).optional(),
+    teaser: zod.string().nullish(),
+    descriptionHtml: zod.string().nullish(),
+    embedUrl: zod.string().optional(),
+    scope: zod.enum(["general", "offer", "conference"]).optional(),
+    startsAt: zod.coerce.date().nullish(),
+    endsAt: zod.coerce.date().nullish(),
+    displayOrder: zod.number().optional(),
+    active: zod.boolean().optional(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImageUrl: zod
+      .string()
+      .nullish()
+      .describe(
+        "Page-specific social preview image; null clears the override.",
+      ),
+    msBusinessId: zod.string().nullish(),
+    msDefaultServiceId: zod.string().nullish(),
+    msTimezone: zod.string().nullish(),
+  })
+  .and(
+    zod.object({
+      id: zod.string(),
+      slug: zod.string(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  );
+
+/**
+ * @summary Create a booking calendar (admin authentication required)
+ */
+
+export const CreateAdminBookingBody = zod
+  .object({
+    slug: zod.string().nullish(),
+    title: zod.string().min(1).optional(),
+    teaser: zod.string().nullish(),
+    descriptionHtml: zod.string().nullish(),
+    embedUrl: zod.string().optional(),
+    scope: zod.enum(["general", "offer", "conference"]).optional(),
+    startsAt: zod.coerce.date().nullish(),
+    endsAt: zod.coerce.date().nullish(),
+    displayOrder: zod.number().optional(),
+    active: zod.boolean().optional(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImageUrl: zod
+      .string()
+      .nullish()
+      .describe(
+        "Page-specific social preview image; null clears the override.",
+      ),
+    msBusinessId: zod.string().nullish(),
+    msDefaultServiceId: zod.string().nullish(),
+    msTimezone: zod.string().nullish(),
+  })
+  .and(zod.object({}).passthrough());
+
+/**
+ * @summary Update a booking calendar (admin authentication required)
+ */
+export const PatchAdminBookingParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const PatchAdminBookingBody = zod.object({
+  slug: zod.string().nullish(),
+  title: zod.string().min(1).optional(),
+  teaser: zod.string().nullish(),
+  descriptionHtml: zod.string().nullish(),
+  embedUrl: zod.string().optional(),
+  scope: zod.enum(["general", "offer", "conference"]).optional(),
+  startsAt: zod.coerce.date().nullish(),
+  endsAt: zod.coerce.date().nullish(),
+  displayOrder: zod.number().optional(),
+  active: zod.boolean().optional(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  ogImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Page-specific social preview image; null clears the override."),
+  msBusinessId: zod.string().nullish(),
+  msDefaultServiceId: zod.string().nullish(),
+  msTimezone: zod.string().nullish(),
+});
+
+export const PatchAdminBookingResponse = zod
+  .object({
+    slug: zod.string().nullish(),
+    title: zod.string().min(1).optional(),
+    teaser: zod.string().nullish(),
+    descriptionHtml: zod.string().nullish(),
+    embedUrl: zod.string().optional(),
+    scope: zod.enum(["general", "offer", "conference"]).optional(),
+    startsAt: zod.coerce.date().nullish(),
+    endsAt: zod.coerce.date().nullish(),
+    displayOrder: zod.number().optional(),
+    active: zod.boolean().optional(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImageUrl: zod
+      .string()
+      .nullish()
+      .describe(
+        "Page-specific social preview image; null clears the override.",
+      ),
+    msBusinessId: zod.string().nullish(),
+    msDefaultServiceId: zod.string().nullish(),
+    msTimezone: zod.string().nullish(),
+  })
+  .and(
+    zod.object({
+      id: zod.string(),
+      slug: zod.string(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  );
+
 /**
  * @summary Health check
  */
@@ -25,7 +578,22 @@ export const GetCurrentUserResponse = zod.object({
   displayName: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
   bio: zod.string().nullish(),
-  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+  roles: zod.array(
+    zod.enum([
+      "admin",
+      "editor",
+      "author",
+      "contributor",
+      "client",
+      "site_admin",
+      "content_author",
+      "hr",
+      "internal",
+      "customer",
+      "registered",
+      "account_manager",
+    ]),
+  ),
 });
 
 /**
@@ -966,6 +1534,33 @@ export const ExportAuditLogCsvQueryParams = zod.object({
   to: zod.date().optional(),
 });
 
+/**
+ * @summary Prepare website access for an existing Entra user
+ */
+export const provisionEntraUserBodyDisplayNameMax = 120;
+
+export const ProvisionEntraUserBody = zod.object({
+  email: zod.string().email(),
+  displayName: zod
+    .string()
+    .min(1)
+    .max(provisionEntraUserBodyDisplayNameMax)
+    .optional(),
+  objectId: zod.string().uuid().optional(),
+  roles: zod.array(zod.enum(["editor", "content_author"])).min(1),
+});
+
+export const listCmsUsersQueryScopeDefault = `content`;
+
+export const ListCmsUsersQueryParams = zod.object({
+  scope: zod
+    .enum(["content", "all"])
+    .default(listCmsUsersQueryScopeDefault)
+    .describe(
+      "All accounts is restricted to administrators. Content remains the default for author selectors.",
+    ),
+});
+
 export const ListCmsUsersResponseItem = zod.object({
   id: zod.string().uuid(),
   externalSubject: zod.string().nullish(),
@@ -973,7 +1568,22 @@ export const ListCmsUsersResponseItem = zod.object({
   email: zod.string().nullish(),
   displayName: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
-  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+  roles: zod.array(
+    zod.enum([
+      "admin",
+      "editor",
+      "author",
+      "contributor",
+      "client",
+      "site_admin",
+      "content_author",
+      "hr",
+      "internal",
+      "customer",
+      "registered",
+      "account_manager",
+    ]),
+  ),
   createdAt: zod.coerce.date().optional(),
 });
 export const ListCmsUsersResponse = zod.array(ListCmsUsersResponseItem);
@@ -983,7 +1593,22 @@ export const SetCmsUserRolesParams = zod.object({
 });
 
 export const SetCmsUserRolesBody = zod.object({
-  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+  roles: zod.array(
+    zod.enum([
+      "admin",
+      "editor",
+      "author",
+      "contributor",
+      "client",
+      "site_admin",
+      "content_author",
+      "hr",
+      "internal",
+      "customer",
+      "registered",
+      "account_manager",
+    ]),
+  ),
 });
 
 export const SetCmsUserRolesResponse = zod.object({
@@ -993,7 +1618,22 @@ export const SetCmsUserRolesResponse = zod.object({
   email: zod.string().nullish(),
   displayName: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
-  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+  roles: zod.array(
+    zod.enum([
+      "admin",
+      "editor",
+      "author",
+      "contributor",
+      "client",
+      "site_admin",
+      "content_author",
+      "hr",
+      "internal",
+      "customer",
+      "registered",
+      "account_manager",
+    ]),
+  ),
   createdAt: zod.coerce.date().optional(),
 });
 
@@ -1381,6 +2021,12 @@ export const GetPublicSiteSettingsResponse = zod.object({
   tagGa4Id: zod.string().nullish(),
   tagLinkedinPartnerId: zod.string().nullish(),
   tagMetaPixelId: zod.string().nullish(),
+  tagHubspotPortalId: zod
+    .string()
+    .nullish()
+    .describe(
+      "HubSpot portal ID used to load the tracking pixel on the public site. Populated from the HUBSPOT_PORTAL_ID env var; null when not configured. Portal IDs are public (they appear in the tracking script src) so it is safe to expose here.\n",
+    ),
   orgName: zod.string().nullish(),
   orgLegalName: zod.string().nullish(),
   orgLogoUrl: zod.string().nullish(),
@@ -4655,6 +5301,11 @@ export const DeleteTeamMemberParams = zod.object({
 export const listAdminFormSubmissionsQueryPageSizeMax = 200;
 
 export const ListAdminFormSubmissionsQueryParams = zod.object({
+  eventSlug: zod.coerce
+    .string()
+    .min(1)
+    .optional()
+    .describe("Only registrations for this exact event slug."),
   formType: zod.coerce.string().optional(),
   search: zod.coerce.string().optional(),
   page: zod.coerce.number().min(1).optional(),
@@ -4710,7 +5361,13 @@ export const ResendAdminFormSubmissionWebhookResponse = zod.object({
 /**
  * @summary Export form submissions as CSV (admin)
  */
+
 export const ExportAdminFormSubmissionsQueryParams = zod.object({
+  eventSlug: zod.coerce
+    .string()
+    .min(1)
+    .optional()
+    .describe("Only registrations for this exact event slug."),
   formType: zod.coerce.string().optional(),
   search: zod.coerce.string().optional(),
 });
@@ -4739,7 +5396,13 @@ export const RetryAdminFormSubmissionResponse = zod.object({
 /**
  * @summary Retry all failed webhook deliveries matching the current filters (admin)
  */
+
 export const RetryFailedAdminFormSubmissionsQueryParams = zod.object({
+  eventSlug: zod.coerce
+    .string()
+    .min(1)
+    .optional()
+    .describe("Only registrations for this exact event slug."),
   formType: zod.coerce.string().optional(),
   search: zod.coerce.string().optional(),
 });

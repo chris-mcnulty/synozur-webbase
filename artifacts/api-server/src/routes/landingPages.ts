@@ -118,6 +118,7 @@ const CreateBody = z.object({
   ogImageUrl: z.string().nullish(),
   // Classification — same surface as posts / white_papers / applications.
   featured: z.boolean().optional(),
+  libraryListed: z.boolean().optional(),
   featuredRank: z.number().int().nullish(),
   pillar: z.enum(COLLATERAL_PILLARS).nullish(),
   serviceId: z.string().uuid().nullish(),
@@ -148,6 +149,7 @@ function serialize(row: LandingPage) {
     // Classification surface — same shape returned by the other artifact
     // admin endpoints so the frontend can share filter / sort UI.
     featured: row.featured,
+    libraryListed: row.libraryListed,
     featuredRank: row.featuredRank,
     pillar: row.pillar,
     serviceId: row.serviceId,
@@ -292,6 +294,7 @@ router.post("/cms/landing-pages", ...adminGuard, async (req, res) => {
       publishedAt: status === "published" ? new Date() : null,
       unpublishedAt: d.unpublishedAt ?? null,
       featured: d.featured ?? false,
+      libraryListed: d.libraryListed ?? false,
       featuredRank: d.featuredRank ?? null,
       pillar: d.pillar ?? null,
       serviceId: d.serviceId ?? null,
@@ -347,6 +350,7 @@ router.patch("/cms/landing-pages/:id", ...adminGuard, async (req, res) => {
   if (d.ogImageUrl !== undefined) updates.ogImageUrl = d.ogImageUrl;
   if (d.unpublishedAt !== undefined) updates.unpublishedAt = d.unpublishedAt;
   if (d.featured !== undefined) updates.featured = d.featured;
+  if (d.libraryListed !== undefined) updates.libraryListed = d.libraryListed;
   if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank;
   if (d.pillar !== undefined) updates.pillar = d.pillar;
   if (d.serviceId !== undefined) updates.serviceId = d.serviceId;
@@ -438,6 +442,7 @@ const ImportBody = z.object({
     // match the column defaults (`featured = false`, `active = true`).
     unpublishedAt: NullableDate,
     featured: z.boolean().optional(),
+    libraryListed: z.boolean().optional(),
     featuredRank: z.number().int().nullable().optional(),
     pillar: z.enum(COLLATERAL_PILLARS).nullable().optional(),
     serviceId: z.string().uuid().nullable().optional(),
@@ -481,6 +486,7 @@ router.get("/cms/landing-pages/:id/export", ...adminGuard, async (req, res) => {
         ? row.unpublishedAt.toISOString()
         : null,
       featured: row.featured,
+      libraryListed: row.libraryListed,
       featuredRank: row.featuredRank,
       pillar: row.pillar,
       serviceId: row.serviceId,
@@ -547,6 +553,7 @@ router.post("/cms/landing-pages/import", ...adminGuard, async (req, res) => {
     ogImageUrl: page.ogImageUrl ?? null,
     unpublishedAt: page.unpublishedAt ?? null,
     featured: page.featured ?? false,
+    libraryListed: page.libraryListed ?? false,
     featuredRank: page.featuredRank ?? null,
     pillar: page.pillar ?? null,
     serviceId: page.serviceId ?? null,

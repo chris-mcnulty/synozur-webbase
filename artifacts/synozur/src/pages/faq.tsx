@@ -145,6 +145,10 @@ export default function Faq() {
         title: activeItem.seoTitle || activeItem.question,
         description,
         path: `/faq/${activeCategory.slug}/${activeItem.slug}`,
+        // Canonical consolidation: the category page is the indexable unit.
+        // The item URL still works for deep links but signals to Google that
+        // /faq/:category is the authoritative page for all Q&As in that group.
+        canonicalPath: `/faq/${activeCategory.slug}`,
       };
     }
     if (activeCategory) {
@@ -154,6 +158,7 @@ export default function Faq() {
           activeCategory.description ||
           `Frequently asked questions about ${activeCategory.name.toLowerCase()} from The Synozur Alliance.`,
         path: `/faq/${activeCategory.slug}`,
+        canonicalPath: undefined,
       };
     }
     return {
@@ -161,6 +166,7 @@ export default function Faq() {
       description:
         "Answers to the questions we hear most often about working with The Synozur Alliance — engagements, services, AI, Microsoft 365, and more.",
       path: "/faq",
+      canonicalPath: undefined,
     };
   }, [activeCategory, activeItem]);
 
@@ -170,6 +176,7 @@ export default function Faq() {
         title={meta.title}
         description={meta.description}
         path={meta.path}
+        canonicalPath={meta.canonicalPath}
         rawTitle={Boolean(activeItem)}
       />
       {jsonLd && <JsonLd data={jsonLd} id="faq-jsonld" />}

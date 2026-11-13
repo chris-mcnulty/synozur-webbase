@@ -284,7 +284,7 @@ export default function InsightsAskPage() {
   return (
     <>
       <Meta
-        title="Ask Synozur — Insights"
+        title="Ask Synozur"
         description="Ask a question and get a grounded answer from Synozur's published research, case studies, and Polaris episodes."
       />
       <div className="mx-auto max-w-3xl px-6 py-16">

@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import { eq, asc, inArray, and, sql } from "drizzle-orm";
 import { readFileSync } from "node:fs";
 import { startOfNextUtcDay } from "../lib/publishWindow";
@@ -682,6 +683,44 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
     entityId: String(event.id),
     diff: before ? buildAuditDiff(before, event) : { after: event },
   });
+  res.json(ListAdminEventsResponseItem.parse(adminShape(enriched)));
+});
+
+/** Lightweight SEO-only patch — updates just seoDescription without requiring
+ *  the caller to send the full event body. Used by the bulk SEO review table. */
+router.patch("/admin/events/:id/seo-description", requireAdmin, async (req, res): Promise<void> => {
+  const params = z.object({ id: z.coerce.number().int().positive() }).safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const body = z.object({ seoDescription: z.string().nullable() }).safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  const [before] = await db.select().from(eventsTable).where(eq(eventsTable.id, params.data.id));
+  if (!before) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  const [event] = await db
+    .update(eventsTable)
+    .set({ seoDescription: body.data.seoDescription })
+    .where(eq(eventsTable.id, params.data.id))
+    .returning();
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  await audit({
+    actorId: req.authedUser?.id,
+    action: "event.update",
+    entity: "event",
+    entityId: String(event.id),
+    diff: buildAuditDiff(before, event),
+  });
+  const enriched = await loadEventEnriched(event);
   res.json(ListAdminEventsResponseItem.parse(adminShape(enriched)));
 });
 

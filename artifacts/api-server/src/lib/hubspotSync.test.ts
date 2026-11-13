@@ -27,18 +27,22 @@ process.env["EMAIL_DISABLED"] = "1";
 import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import {
   db,
   pool,
   hubspotSyncEventsTable,
   siteSettingsTable,
   formSubmissionsTable,
+  clientOrganizationsTable,
+  engagementsTable,
 } from "@workspace/db";
 import {
   enqueueContactSubmission,
   drainHubspotQueue,
   replayDeadLetter,
+  enqueueCompanyUpsert,
+  enqueueDealUpsert,
   type EnqueueContactArgs,
 } from "./hubspotSync.js";
 
@@ -488,5 +492,673 @@ test("replayDeadLetter: returns false for a pending (non-dead_letter) row", asyn
     assert.equal(result, false, "should return false when row is not dead_letter");
   } finally {
     await cleanupEvents([email]);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// company.upsert and deal.upsert
+// ---------------------------------------------------------------------------
+
+/**
+ * Sequence-based fetch mock: each call returns the next response in the list;
+ * once exhausted it repeats the last entry. This lets tests predict the exact
+ * HubSpot call order without URL matching.
+ */
+function mockFetchSequence(responses: Array<{ status: number; body?: unknown }>): void {
+  let i = 0;
+  installFetch(async () => {
+    const r = responses[Math.min(i++, responses.length - 1)]!;
+    return new Response(JSON.stringify(r.body ?? {}), { status: r.status });
+  });
+}
+
+/** MISSING_SCOPES body that triggers the isMissingScope guard. */
+const MISSING_SCOPES_BODY = { message: "MISSING_SCOPES", status: "FORBIDDEN" };
+
+/** Insert a sync event without a contact email (used for company/deal kinds). */
+async function insertGenericEvent(opts: {
+  kind: string;
+  payload: Record<string, unknown>;
+  status?: string;
+  attempts?: number;
+}): Promise<string> {
+  const [row] = await db
+    .insert(hubspotSyncEventsTable)
+    .values({
+      kind: opts.kind,
+      contactEmail: null,
+      payload: opts.payload,
+      status: opts.status ?? "pending",
+      attempts: opts.attempts ?? 0,
+      nextAttemptAt: new Date(Date.now() - 1000),
+    })
+    .returning();
+  return row!.id;
+}
+
+/** Insert a minimal clientOrganization row and return it. */
+async function insertTestOrg(overrides: {
+  hubspotCompanyId?: string | null;
+  approvedEmailDomains?: string[];
+  isActive?: boolean;
+  deletedAt?: Date | null;
+} = {}): Promise<{ id: string; slug: string }> {
+  const slug = `test-org-${crypto.randomBytes(4).toString("hex")}`;
+  const [org] = await db
+    .insert(clientOrganizationsTable)
+    .values({
+      name: "Test Org",
+      slug,
+      approvedEmailDomains: overrides.approvedEmailDomains ?? [`${slug}.example`],
+      hubspotCompanyId: overrides.hubspotCompanyId ?? null,
+      isActive: overrides.isActive ?? true,
+      deletedAt: overrides.deletedAt ?? null,
+    })
+    .returning();
+  return { id: org!.id, slug: org!.slug };
+}
+
+// --- contact.upsert company association ---
+
+test("contact.upsert: matching email domain associates contact with its HubSpot Company", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  const domain = `contact-assoc-${crypto.randomBytes(4).toString("hex")}.example`;
+  const email = `person@${domain.toUpperCase()}`;
+  const requests: Array<{ url: string; method: string; body: string | undefined }> = [];
+  installFetch(async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method ?? "GET",
+      body: typeof init?.body === "string" ? init.body : undefined,
+    });
+    return new Response(JSON.stringify(
+      requests.length === 1 ? { id: "hs-contact-associated" } : {},
+    ), { status: 200 });
+  });
+  const { id: orgId } = await insertTestOrg({
+    hubspotCompanyId: "hs-company-associated",
+    approvedEmailDomains: [domain],
+  });
+  const eventId = await insertSyncEvent({ kind: "contact.upsert", email });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "succeeded");
+    const association = requests.find((request) => request.url.includes("/associations/companies/"));
+    assert.ok(association, "Contact → Company association request should be sent");
+    assert.ok(association.url.endsWith("/crm/v4/objects/contacts/hs-contact-associated/associations/companies/hs-company-associated"));
+    assert.equal(association.method, "PUT");
+    assert.deepEqual(JSON.parse(association.body ?? "null"), [
+      { associationCategory: "HUBSPOT_DEFINED", associationTypeId: 1 },
+    ]);
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("contact.upsert: transient association failure leaves event pending for retry", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  const domain = `contact-assoc-fail-${crypto.randomBytes(4).toString("hex")}.example`;
+  const email = `person@${domain}`;
+  let calls = 0;
+  installFetch(async () => {
+    calls += 1;
+    return calls === 1
+      ? new Response(JSON.stringify({ id: "hs-contact-assoc-fail" }), { status: 200 })
+      : new Response("association unavailable", { status: 500 });
+  });
+  const { id: orgId } = await insertTestOrg({
+    hubspotCompanyId: "hs-company-assoc-fail",
+    approvedEmailDomains: [domain],
+  });
+  const eventId = await insertSyncEvent({ kind: "contact.upsert", email });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "pending");
+    assert.equal(event?.attempts, 1);
+    assert.ok(event?.lastError?.includes("contact_company_assoc_500"));
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("contact.upsert: deleted, inactive, and duplicate-domain organizations are not arbitrarily associated", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  const domain = `contact-ineligible-${crypto.randomBytes(4).toString("hex")}.example`;
+  const email = `person@${domain}`;
+  const requestedUrls: string[] = [];
+  installFetch(async (input) => {
+    requestedUrls.push(String(input));
+    return new Response(JSON.stringify({ id: "hs-contact-ineligible" }), { status: 200 });
+  });
+  const orgs = await Promise.all([
+    insertTestOrg({ hubspotCompanyId: "hs-deleted", approvedEmailDomains: [domain], deletedAt: new Date() }),
+    insertTestOrg({ hubspotCompanyId: "hs-inactive", approvedEmailDomains: [domain], isActive: false }),
+    insertTestOrg({ hubspotCompanyId: "hs-duplicate-a", approvedEmailDomains: [domain] }),
+    insertTestOrg({ hubspotCompanyId: "hs-duplicate-b", approvedEmailDomains: [domain.toUpperCase()] }),
+  ]);
+  const eventId = await insertSyncEvent({ kind: "contact.upsert", email });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "succeeded");
+    assert.equal(
+      requestedUrls.filter((url) => url.includes("/associations/companies/")).length,
+      0,
+      "ambiguous eligible domain matches must not pick a company arbitrarily",
+    );
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(clientOrganizationsTable).where(inArray(clientOrganizationsTable.id, orgs.map((org) => org.id)));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+/** Insert a minimal engagement row and return its id. */
+async function insertTestEngagement(clientOrganizationId: string): Promise<string> {
+  const slug = `eng-${crypto.randomBytes(4).toString("hex")}`;
+  const [eng] = await db
+    .insert(engagementsTable)
+    .values({
+      clientOrganizationId,
+      title: "Test Engagement",
+      slug,
+      status: "active",
+    })
+    .returning();
+  return eng!.id;
+}
+
+/** Remove a single sync event row by id. */
+async function cleanupEventById(id: string): Promise<void> {
+  await db.delete(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, id));
+}
+
+// --- company.upsert ---
+
+test("company.upsert: search-empty → POST creates company, marks succeeded, writes hubspotCompanyId", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  // Search returns nothing → POST creates the company.
+  mockFetchSequence([
+    { status: 200, body: { results: [] } },                      // search
+    { status: 200, body: { id: "hs-company-create-1" } },        // POST create
+  ]);
+  const { id: orgId, slug } = await insertTestOrg();
+  const eventId = await insertGenericEvent({
+    kind: "company.upsert",
+    payload: { orgId, name: "Test Org", slug, approvedEmailDomains: [`${slug}.example`] },
+  });
+  try {
+    const result = await drainHubspotQueue(10);
+    assert.ok(result.processed >= 1, "at least 1 row processed");
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "succeeded", "company.upsert should be succeeded");
+    const [org] = await db.select().from(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    assert.equal(org?.hubspotCompanyId, "hs-company-create-1", "hubspotCompanyId should be written to the org row");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("company.upsert: search-found → PATCH updates existing company, marks succeeded", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  mockFetchSequence([
+    { status: 200, body: { results: [{ id: "hs-company-existing" }] } }, // search found
+    { status: 200, body: { id: "hs-company-existing" } },                // PATCH
+  ]);
+  const { id: orgId, slug } = await insertTestOrg({ hubspotCompanyId: "hs-company-existing" });
+  const eventId = await insertGenericEvent({
+    kind: "company.upsert",
+    payload: { orgId, name: "Test Org Updated", slug, approvedEmailDomains: [`${slug}.example`] },
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "succeeded", "company.upsert patch path should be succeeded");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("company.upsert: 403 MISSING_SCOPES → immediately dead_lettered with missing_scope error", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  mockFetchSequence([
+    { status: 200, body: { results: [] } },             // search
+    { status: 403, body: MISSING_SCOPES_BODY },          // POST → scope error
+  ]);
+  const { id: orgId, slug } = await insertTestOrg();
+  const eventId = await insertGenericEvent({
+    kind: "company.upsert",
+    payload: { orgId, name: "Test Org", slug, approvedEmailDomains: [] },
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "dead_letter", "scope error should dead-letter immediately");
+    assert.ok(event?.lastError?.includes("missing_scope"), `lastError should contain missing_scope, got: ${event?.lastError}`);
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("company.upsert: 5xx from HubSpot → stays pending with backoff", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  mockFetchSequence([
+    { status: 200, body: { results: [] } }, // search
+    { status: 500, body: {} },               // POST → transient error
+  ]);
+  const { id: orgId, slug } = await insertTestOrg();
+  const eventId = await insertGenericEvent({
+    kind: "company.upsert",
+    payload: { orgId, name: "Test Org", slug, approvedEmailDomains: [] },
+    attempts: 0,
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "pending", "5xx should leave event pending for retry");
+    assert.equal(event?.attempts, 1, "attempts should be incremented");
+    assert.ok(event!.nextAttemptAt > new Date(), "nextAttemptAt should be in the future");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+// --- deal.upsert ---
+
+test("deal.upsert: creates deal, associates with company, marks succeeded, writes hubspotDealId", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  // search (deal), POST deal, PUT association
+  mockFetchSequence([
+    { status: 200, body: { results: [] } },              // deal search
+    { status: 200, body: { id: "hs-deal-ok-1" } },       // deal POST create
+    { status: 200, body: {} },                            // association PUT
+  ]);
+  const { id: orgId } = await insertTestOrg({ hubspotCompanyId: "hs-company-parent" });
+  const engagementId = await insertTestEngagement(orgId);
+  const eventId = await insertGenericEvent({
+    kind: "deal.upsert",
+    payload: { engagementId, clientOrganizationId: orgId, title: "Test Deal", status: "active", startedAt: new Date().toISOString(), summary: null },
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "succeeded", "deal.upsert with company should be succeeded");
+    const [eng] = await db.select().from(engagementsTable).where(eq(engagementsTable.id, engagementId));
+    assert.equal(eng?.hubspotDealId, "hs-deal-ok-1", "hubspotDealId should be written to the engagement row");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(engagementsTable).where(eq(engagementsTable.id, engagementId));
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("deal.upsert: company not yet synced → event stays pending, deal ID is still stored", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  // Only 2 HubSpot calls: search + create; no association because company has no HS id.
+  mockFetchSequence([
+    { status: 200, body: { results: [] } },              // deal search
+    { status: 200, body: { id: "hs-deal-no-co" } },      // deal POST create
+  ]);
+  const { id: orgId } = await insertTestOrg({ hubspotCompanyId: null }); // no HS company yet
+  const engagementId = await insertTestEngagement(orgId);
+  const eventId = await insertGenericEvent({
+    kind: "deal.upsert",
+    payload: { engagementId, clientOrganizationId: orgId, title: "No-Company Deal", status: "active", startedAt: new Date().toISOString(), summary: null },
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "pending", "deal without synced company should remain pending for retry");
+    assert.equal(event?.lastError, "company_not_yet_synced");
+    // The deal ID must already be stored so the retry patches instead of duplicates.
+    const [eng] = await db.select().from(engagementsTable).where(eq(engagementsTable.id, engagementId));
+    assert.equal(eng?.hubspotDealId, "hs-deal-no-co", "hubspotDealId should be persisted even when pending");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(engagementsTable).where(eq(engagementsTable.id, engagementId));
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("deal.upsert: association 5xx → event stays pending (retryable), deal ID still stored", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  mockFetchSequence([
+    { status: 200, body: { results: [] } },           // deal search
+    { status: 200, body: { id: "hs-deal-assoc-fail" } }, // deal create
+    { status: 500, body: {} },                          // association PUT → transient
+  ]);
+  const { id: orgId } = await insertTestOrg({ hubspotCompanyId: "hs-company-assoc-test" });
+  const engagementId = await insertTestEngagement(orgId);
+  const eventId = await insertGenericEvent({
+    kind: "deal.upsert",
+    payload: { engagementId, clientOrganizationId: orgId, title: "Assoc Fail Deal", status: "active", startedAt: new Date().toISOString(), summary: null },
+    attempts: 0,
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "pending", "association 5xx should keep event pending");
+    assert.ok(event?.lastError?.includes("assoc_500"), `lastError should mention assoc_500, got: ${event?.lastError}`);
+    const [eng] = await db.select().from(engagementsTable).where(eq(engagementsTable.id, engagementId));
+    assert.equal(eng?.hubspotDealId, "hs-deal-assoc-fail", "hubspotDealId should be stored despite association failure");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(engagementsTable).where(eq(engagementsTable.id, engagementId));
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("company.upsert: POST 409 CONFLICT → searches existing object and patches it, marks succeeded", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  // sequence: search (empty) → POST 409 → deconflict search (found) → PATCH 200
+  mockFetchSequence([
+    { status: 200, body: { results: [] } },                          // initial search: not found
+    { status: 409, body: { status: "error", category: "CONFLICT" } }, // POST: conflict
+    { status: 200, body: { results: [{ id: "hs-co-conflict" }] } },  // deconflict search: found
+    { status: 200, body: { id: "hs-co-conflict" } },                  // deconflict PATCH
+  ]);
+  const { id: orgId, slug } = await insertTestOrg();
+  const eventId = await insertGenericEvent({
+    kind: "company.upsert",
+    payload: { orgId, name: "Conflict Org", slug, approvedEmailDomains: [] },
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "succeeded", "409 conflict resolution should mark event succeeded");
+    const [org] = await db.select().from(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    assert.equal(org?.hubspotCompanyId, "hs-co-conflict", "should store the conflict-resolved Company ID");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("parallel drains for the same org: exactly one Company created even when both POSTs race", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  const { id: orgId, slug } = await insertTestOrg();
+
+  // Insert TWO pending events for the same org. Concurrent drains will each
+  // claim one via FOR UPDATE SKIP LOCKED.
+  const eventId1 = await insertGenericEvent({
+    kind: "company.upsert",
+    payload: { orgId, name: "Race Org", slug, approvedEmailDomains: [] },
+  });
+  const eventId2 = await insertGenericEvent({
+    kind: "company.upsert",
+    payload: { orgId, name: "Race Org", slug, approvedEmailDomains: [] },
+  });
+
+  let postCount = 0;
+  // URL-aware mock so we can distinguish search calls from create calls.
+  installFetch(async (input, init) => {
+    const url = typeof input === "string" ? input : (input as Request).url;
+    const method = ((init as RequestInit | undefined)?.method ?? "GET").toUpperCase();
+
+    if (url.includes("/search")) {
+      // First two searches (one per event's initial lookup) return empty.
+      // Any subsequent search is the deconflict search after the 409.
+      const results = postCount > 0 ? [{ id: "hs-co-race" }] : [];
+      return new Response(JSON.stringify({ results }), { status: 200 });
+    }
+    if (method === "POST") {
+      postCount++;
+      if (postCount === 1) {
+        // First create wins.
+        return new Response(JSON.stringify({ id: "hs-co-race" }), { status: 200 });
+      }
+      // Second create loses — unique property already exists.
+      return new Response(JSON.stringify({ status: "error", category: "CONFLICT" }), { status: 409 });
+    }
+    // PATCH (deconflict or known-ID update)
+    return new Response(JSON.stringify({ id: "hs-co-race" }), { status: 200 });
+  });
+
+  try {
+    // Two concurrent drains — each claims one event via SKIP LOCKED.
+    await Promise.all([drainHubspotQueue(1), drainHubspotQueue(1)]);
+
+    const [event1] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId1));
+    const [event2] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId2));
+    // Both events must resolve to a terminal state (succeeded or pending-for-retry).
+    assert.ok(["succeeded", "pending"].includes(event1?.status ?? ""), `event1 status should be succeeded or pending, got ${event1?.status}`);
+    assert.ok(["succeeded", "pending"].includes(event2?.status ?? ""), `event2 status should be succeeded or pending, got ${event2?.status}`);
+
+    // Exactly one Company should have been POSTed — the other resolved via PATCH.
+    // postCount may be 1 (if second drain skipped search due to known ID) or 2 (true race).
+    // In either case the org ends up with one Company ID.
+    const [org] = await db.select().from(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    assert.equal(org?.hubspotCompanyId, "hs-co-race", "org must have exactly one Company ID after concurrent drains");
+  } finally {
+    await cleanupEventById(eventId1);
+    await cleanupEventById(eventId2);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("enqueueCompanyUpsert: coalesces into existing pending event instead of inserting a second", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  const { id: orgId, slug } = await insertTestOrg();
+  try {
+    // Enqueue twice — both arrive before any worker claims the event.
+    await enqueueCompanyUpsert({ orgId, name: "Org V1", slug, approvedEmailDomains: [] });
+    await enqueueCompanyUpsert({ orgId, name: "Org V2", slug, approvedEmailDomains: [] });
+
+    // Only one event should exist in the queue.
+    const events = await db
+      .select()
+      .from(hubspotSyncEventsTable)
+      .where(
+        and(
+          eq(hubspotSyncEventsTable.kind, "company.upsert"),
+          sql`(payload->>'orgId') = ${orgId}`,
+        ),
+      );
+    assert.equal(events.length, 1, "second enqueue should coalesce into the first pending event, not insert a new row");
+    // The payload should carry the latest data.
+    const payload = events[0]!.payload as Record<string, unknown>;
+    assert.equal(payload["name"], "Org V2", "coalesced event should have the latest payload");
+  } finally {
+    const events = await db
+      .select()
+      .from(hubspotSyncEventsTable)
+      .where(sql`(payload->>'orgId') = ${orgId}`);
+    for (const e of events) await cleanupEventById(e.id);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("enqueueCompanyUpsert: inserts a NEW event when existing event is in_flight (does not clobber in-progress payload)", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  const { id: orgId, slug } = await insertTestOrg();
+  // Manually insert an in_flight event to simulate a worker mid-process.
+  const inFlightId = await insertGenericEvent({
+    kind: "company.upsert",
+    payload: { orgId, name: "In-flight Org", slug, approvedEmailDomains: [] },
+  });
+  await db
+    .update(hubspotSyncEventsTable)
+    .set({ status: "in_flight" })
+    .where(eq(hubspotSyncEventsTable.id, inFlightId));
+  try {
+    // Enqueue a follow-up update. The in_flight event must NOT be mutated.
+    await enqueueCompanyUpsert({ orgId, name: "Updated Org", slug, approvedEmailDomains: [] });
+
+    const events = await db
+      .select()
+      .from(hubspotSyncEventsTable)
+      .where(sql`(payload->>'orgId') = ${orgId}`)
+      .orderBy(hubspotSyncEventsTable.createdAt);
+    assert.equal(events.length, 2, "a new pending event should be inserted alongside the in_flight one");
+    const inFlight = events.find((e) => e.id === inFlightId)!;
+    assert.equal((inFlight.payload as Record<string, unknown>)["name"], "In-flight Org", "in_flight event payload must NOT be overwritten");
+    const newEvent = events.find((e) => e.id !== inFlightId)!;
+    assert.equal(newEvent.status, "pending", "new event should be pending");
+    assert.equal((newEvent.payload as Record<string, unknown>)["name"], "Updated Org", "new event should carry the latest payload");
+  } finally {
+    const events = await db
+      .select()
+      .from(hubspotSyncEventsTable)
+      .where(sql`(payload->>'orgId') = ${orgId}`);
+    for (const e of events) await cleanupEventById(e.id);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("company.upsert: search 5xx → stays pending, never falls through to POST", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  // Only one call: search → 500. No POST should follow.
+  let callCount = 0;
+  installFetch(async () => {
+    callCount++;
+    return new Response("gateway error", { status: 500 });
+  });
+  const { id: orgId, slug } = await insertTestOrg();
+  const eventId = await insertGenericEvent({
+    kind: "company.upsert",
+    payload: { orgId, name: "Test Org", slug, approvedEmailDomains: [] },
+    attempts: 0,
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "pending", "search 5xx should leave event pending");
+    assert.ok(event?.lastError?.includes("search_500"), `lastError should contain search_500, got: ${event?.lastError}`);
+    assert.equal(callCount, 1, "only the search call should be made — no fallthrough POST");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("company.upsert: known hubspotCompanyId → direct PATCH, no search call", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  // The org already has a HubSpot ID. We expect exactly one call: PATCH.
+  let callCount = 0;
+  installFetch(async () => {
+    callCount++;
+    return new Response(JSON.stringify({ id: "hs-company-known" }), { status: 200 });
+  });
+  // Org starts with hubspotCompanyId already set (previous successful sync).
+  const { id: orgId, slug } = await insertTestOrg({ hubspotCompanyId: "hs-company-known" });
+  const eventId = await insertGenericEvent({
+    kind: "company.upsert",
+    payload: { orgId, name: "Updated Name", slug, approvedEmailDomains: [] },
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "succeeded", "direct PATCH path should succeed");
+    assert.equal(callCount, 1, "only one PATCH call — search must be skipped when ID is known");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("deal.upsert: search 5xx → stays pending, never falls through to POST", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  let callCount = 0;
+  installFetch(async () => {
+    callCount++;
+    return new Response("search error", { status: 500 });
+  });
+  const { id: orgId } = await insertTestOrg({ hubspotCompanyId: "hs-company-search-fail" });
+  const engagementId = await insertTestEngagement(orgId);
+  const eventId = await insertGenericEvent({
+    kind: "deal.upsert",
+    payload: { engagementId, clientOrganizationId: orgId, title: "Deal Search Fail", status: "active", startedAt: null, summary: null },
+    attempts: 0,
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "pending", "deal search 5xx should leave event pending");
+    assert.ok(event?.lastError?.includes("search_500"), `lastError should contain search_500, got: ${event?.lastError}`);
+    assert.equal(callCount, 1, "only the search call — no fallthrough POST");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(engagementsTable).where(eq(engagementsTable.id, engagementId));
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("deal.upsert: known hubspotDealId → direct PATCH, skips search", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  let callCount = 0;
+  installFetch(async (input) => {
+    callCount++;
+    // Accept both the PATCH and the association PUT.
+    return new Response(JSON.stringify({ id: "hs-deal-known" }), { status: 200 });
+  });
+  const { id: orgId } = await insertTestOrg({ hubspotCompanyId: "hs-company-for-known-deal" });
+  const engagementId = await insertTestEngagement(orgId);
+  // Pre-set hubspotDealId as if a previous sync already ran.
+  await db.update(engagementsTable).set({ hubspotDealId: "hs-deal-known" }).where(eq(engagementsTable.id, engagementId));
+  const eventId = await insertGenericEvent({
+    kind: "deal.upsert",
+    payload: { engagementId, clientOrganizationId: orgId, title: "Updated Deal", status: "active", startedAt: null, summary: null },
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "succeeded", "direct PATCH path for deal should succeed");
+    // 2 calls: PATCH deal + PUT association (no search).
+    assert.equal(callCount, 2, "search must be skipped — only PATCH + association PUT");
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(engagementsTable).where(eq(engagementsTable.id, engagementId));
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
+  }
+});
+
+test("deal.upsert: association 403 MISSING_SCOPES → dead_lettered immediately", async () => {
+  const prev = await setSiteHubspotEnabled(true);
+  mockFetchSequence([
+    { status: 200, body: { results: [] } },                // deal search
+    { status: 200, body: { id: "hs-deal-scope-fail" } },   // deal create
+    { status: 403, body: MISSING_SCOPES_BODY },             // association → scope error
+  ]);
+  const { id: orgId } = await insertTestOrg({ hubspotCompanyId: "hs-company-scope-test" });
+  const engagementId = await insertTestEngagement(orgId);
+  const eventId = await insertGenericEvent({
+    kind: "deal.upsert",
+    payload: { engagementId, clientOrganizationId: orgId, title: "Scope Fail Deal", status: "active", startedAt: new Date().toISOString(), summary: null },
+  });
+  try {
+    await drainHubspotQueue(10);
+    const [event] = await db.select().from(hubspotSyncEventsTable).where(eq(hubspotSyncEventsTable.id, eventId));
+    assert.equal(event?.status, "dead_letter", "association MISSING_SCOPES should dead-letter immediately");
+    assert.ok(event?.lastError?.includes("missing_scope"), `lastError should contain missing_scope, got: ${event?.lastError}`);
+  } finally {
+    await cleanupEventById(eventId);
+    await db.delete(engagementsTable).where(eq(engagementsTable.id, engagementId));
+    await db.delete(clientOrganizationsTable).where(eq(clientOrganizationsTable.id, orgId));
+    await restoreSiteHubspotEnabled(prev);
   }
 });

@@ -1,4 +1,5 @@
-import { and, eq, inArray, isNull, like, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, like, ne, or } from "drizzle-orm";
+import { isLandingPageLibraryEligible } from "./landingPageLibraryVisibility";
 import {
   db,
   collateralTable,
@@ -397,7 +398,7 @@ export async function upsertCollateralFromWhitePaper(
   const downloadUrl =
     uploadedDocumentUrl || whitePaper.documentUrl || whitePaper.externalUrl || null;
   const normalizedPillar = normalizePillar(whitePaper.pillar);
-  const serviceId = await pillarToServiceId(normalizedPillar);
+  const serviceId = whitePaper.serviceId ?? (await pillarToServiceId(normalizedPillar));
 
   const syncedFields = {
     type: collateralType as "white_paper" | "ebook",
@@ -414,6 +415,7 @@ export async function upsertCollateralFromWhitePaper(
     featured: whitePaper.featured,
     featuredRank: whitePaper.featuredRank,
     serviceId,
+    solutionId: whitePaper.solutionId,
     active: isPublished,
     updatedAt: now,
   };
@@ -718,8 +720,8 @@ export async function softDeleteCollateralForWorkshop(
     .where(eq(collateralTable.sourceId, sourceId));
 }
 
-// Landing pages opt into the library via the `featured` flag, mirroring
-// the post→collateral sync. An unfeatured / unpublished / archived /
+// Landing pages opt into the library independently of homepage featuring.
+// Existing featured pages remain eligible. An unlisted / unpublished / archived /
 // soft-deleted page drops out of the library without losing its row, so
 // flipping `featured` back on restores it cleanly.
 export async function upsertCollateralFromLandingPage(
@@ -731,15 +733,7 @@ export async function upsertCollateralFromLandingPage(
   });
 
   const now = new Date();
-  const withinWindow =
-    (!page.publishedAt || page.publishedAt <= now) &&
-    (!page.unpublishedAt || page.unpublishedAt > now);
-  const isEligible =
-    page.featured &&
-    page.active &&
-    page.status === "published" &&
-    !page.deletedAt &&
-    withinWindow;
+  const isEligible = isLandingPageLibraryEligible(page, now);
 
   if (!isEligible) {
     if (existing) {
@@ -821,7 +815,7 @@ export async function backfillLandingPageCollateral(): Promise<number> {
     .from(landingPagesTable)
     .where(
       and(
-        eq(landingPagesTable.featured, true),
+        or(eq(landingPagesTable.featured, true), eq(landingPagesTable.libraryListed, true)),
         eq(landingPagesTable.status, "published"),
         eq(landingPagesTable.active, true),
         isNull(landingPagesTable.deletedAt),

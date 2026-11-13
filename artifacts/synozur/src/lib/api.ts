@@ -64,6 +64,7 @@ export interface GenericFormInput {
 
 export interface SubmissionsQuery {
   formType?: string;
+  eventSlug?: string;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -72,6 +73,7 @@ export interface SubmissionsQuery {
 function submissionsQueryString(q: SubmissionsQuery): string {
   const params = new URLSearchParams();
   if (q.formType) params.set("formType", q.formType);
+  if (q.eventSlug) params.set("eventSlug", q.eventSlug);
   if (q.search) params.set("search", q.search);
   if (q.page) params.set("page", String(q.page));
   if (q.pageSize) params.set("pageSize", String(q.pageSize));
@@ -884,7 +886,12 @@ export interface LibraryHealthReport {
 // #160 — Search Console / Bing index-coverage dashboard.
 export interface SeoCoverageKindBuckets {
   kind: string;
+  /** Complete current crawlable sitemap inventory for this artifact type. */
   total: number;
+  /** URLs with a usable Google or Bing inspection result. */
+  inspected: number;
+  /** URLs awaiting a usable provider verdict (quota, throttle, or error). */
+  pendingInspection: number;
   indexed: number;
   discoveredNotIndexed: number;
   crawlError: number;
@@ -902,7 +909,52 @@ export interface SeoCoverageRun {
   bingConfigured: boolean;
   googleChecked: number;
   bingChecked: number;
+  bingThrottled: boolean;
+  resubmittedCount: number | null;
   error: string | null;
+  progress?: SeoCoverageRunProgress | null;
+}
+
+export interface SeoCoverageRunProgress {
+  state: "running" | "stalled";
+  completedUrlCount: number;
+  totalUrlCount: number;
+  lastProgressAt: string | null;
+}
+
+export interface SeoCoverageScanStartResult {
+  started: boolean;
+  status: "started" | "already-running" | "scanner-held";
+  runId?: string;
+}
+
+export interface SeoIndexingTrendDay {
+  date: string;
+  sitemapUrlCount: number;
+  checkedUrlCount: number;
+  indexedUrlCount: number;
+  discoveredNotIndexedCount: number;
+  isComplete: boolean;
+  confirmedNewlyIndexed: number;
+  netIndexedChange: number | null;
+}
+
+export interface SeoProviderIndexingTrend {
+  provider: "google" | "bing";
+  days: SeoIndexingTrendDay[];
+  completeSnapshotDays: number;
+  latestIndexedUrlCount: number | null;
+  latestSitemapUrlCount: number | null;
+  latestNetIndexedChange: number | null;
+  averageNetNewPerDay: number | null;
+  projectedDaysToFullIndex: number | null;
+  averageCheckedPerDay: number | null;
+  estimatedDaysForFullRecheck: number | null;
+}
+
+export interface SeoIndexingTrends {
+  google: SeoProviderIndexingTrend;
+  bing: SeoProviderIndexingTrend;
 }
 
 export interface SeoCoverageOverview {
@@ -910,12 +962,36 @@ export interface SeoCoverageOverview {
   googleConfigured: boolean;
   bingConfigured: boolean;
   byKind: SeoCoverageKindBuckets[];
+  indexingTrends: SeoIndexingTrends;
   scanRunning: boolean;
-  // True when Google is configured but returned 0 successful checks on the
-  // last run — signals a scope / property-access misconfiguration.
+  // True when Google URL Inspection quota/rate limiting blocked one or more
+  // results in the latest scan. This is not a credential failure.
+  googleQuotaWarning: boolean;
+  // True when Google is configured but returned 0 successful checks without a
+  // quota diagnostic — signals a scope / property-access misconfiguration.
   googleAuthWarning: boolean;
-  // Raw error message from the last failed Google probe, if available.
+  // Raw provider diagnostic from the latest quota/access failure, if any.
   googleLastError?: string | null;
+  // Remediation details: which service-account email needs access to which
+  // Search Console property. Only set when googleAuthWarning is true.
+  googleServiceAccountEmail?: string | null;
+  googleSiteUrl?: string | null;
+  // True when Bing is configured, at least one URL was processed, and the run
+  // checked 0 Bing URLs — typically quota exhausted by a prior run.
+  bingThrottleWarning?: boolean;
+}
+
+export interface SeoProviderPreflightResult {
+  configured: boolean;
+  ok: boolean;
+  reason?: string;
+  /** List of Search Console properties visible to the service account (Google only). */
+  properties?: string[];
+}
+
+export interface SeoCredentialPreflightResult {
+  google: SeoProviderPreflightResult;
+  bing: SeoProviderPreflightResult;
 }
 
 export interface SeoCoverageUrlRow {
@@ -929,7 +1005,17 @@ export interface SeoCoverageUrlRow {
   lastCheckedAt: string | null;
 }
 
-
+export interface SeoResubmittedUrlRow {
+  url: string;
+  path: string;
+  artifactKind: string;
+  resubmittedAt: string;
+  /** Current Google bucket — null means the URL is no longer tracked. */
+  currentGoogleBucket: string | null;
+  currentGoogleCoverageState: string | null;
+  currentBingBucket: string | null;
+  currentLastCheckedAt: string | null;
+}
 export const api = {
   listServices: () => jsonFetch<{ items: ServiceWithSolutions[] }>(url("/services")),
   // Task #317 — public list of solutions, used by the marketing header
@@ -1132,6 +1218,11 @@ export const api = {
   updateEvent: (id: number, body: EventInput) =>
     jsonFetch<AdminEvent>(url(`/admin/events/${id}`), { method: "PATCH", body: JSON.stringify(body) }),
   deleteEvent: (id: number) => jsonFetch<void>(url(`/admin/events/${id}`), { method: "DELETE" }),
+  patchEventSeoDescription: (id: number, seoDescription: string | null) =>
+    jsonFetch<AdminEvent>(url(`/admin/events/${id}/seo-description`), {
+      method: "PATCH",
+      body: JSON.stringify({ seoDescription }),
+    }),
   getEventSchedule: (slug: string) =>
     jsonFetch<{ items: EventSession[] }>(url(`/events/${slug}/schedule`)),
   replaceEventSessions: (id: number, sessions: EventSessionInput[]) =>
@@ -1191,7 +1282,7 @@ export const api = {
     }),
   listSubmissions: (q: SubmissionsQuery = {}) =>
     jsonFetch<AdminFormSubmissionsPage>(url(`/admin/forms/submissions${submissionsQueryString(q)}`)),
-  submissionsCsvUrl: (q: Pick<SubmissionsQuery, "formType" | "search"> = {}) =>
+  submissionsCsvUrl: (q: Pick<SubmissionsQuery, "formType" | "search" | "eventSlug"> = {}) =>
     url(`/admin/forms/submissions.csv${submissionsQueryString(q)}`),
   resendSubmissionWebhook: (id: number) =>
     jsonFetch<AdminFormSubmission>(url(`/admin/forms/submissions/${id}/resend-webhook`), {
@@ -1324,10 +1415,18 @@ export const api = {
     );
   },
   seoCoverageScan: () =>
-    jsonFetch<{ started: boolean; alreadyRunning?: boolean }>(
+    jsonFetch<SeoCoverageScanStartResult>(
       url("/cms/seo-coverage/scan"),
       { method: "POST", body: JSON.stringify({}) },
     ),
+  seoCoverageRuns: () =>
+    jsonFetch<{ runs: SeoCoverageRun[] }>(url("/cms/seo-coverage/runs")),
+  seoCoverageRunResubmitted: (runId: string) =>
+    jsonFetch<{ rows: SeoResubmittedUrlRow[] }>(
+      url(`/cms/seo-coverage/runs/${encodeURIComponent(runId)}/resubmitted`),
+    ),
+  seoCoveragePreflight: () =>
+    jsonFetch<SeoCredentialPreflightResult>(url("/cms/seo-coverage/preflight")),
   publicTeamMembers: () => jsonFetch<PublicTeamMember[]>(url("/team-members")),
   publicTeamMember: (slug: string) =>
     jsonFetch<PublicTeamMemberDetail>(url(`/team-members/${encodeURIComponent(slug)}`)),
@@ -1350,7 +1449,7 @@ export const api = {
     jsonFetch<AdminFormSubmission>(url(`/admin/forms/submissions/${id}/retry`), {
       method: "POST",
     }),
-  retryFailedSubmissions: (q: Pick<SubmissionsQuery, "formType" | "search"> = {}) =>
+  retryFailedSubmissions: (q: Pick<SubmissionsQuery, "formType" | "search" | "eventSlug"> = {}) =>
     jsonFetch<RetryFailedSubmissionsResult>(
       url(`/admin/forms/submissions/retry-failed${submissionsQueryString(q)}`),
       { method: "POST" },
@@ -2414,6 +2513,7 @@ export interface BookingDto {
   active: boolean;
   seoTitle: string | null;
   seoDescription: string | null;
+  ogImageUrl?: string | null;
   msBusinessId: string | null;
   msDefaultServiceId: string | null;
   msTimezone: string | null;
@@ -2434,6 +2534,7 @@ export interface BookingInput {
   active?: boolean;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  ogImageUrl?: string | null;
   msBusinessId?: string | null;
   msDefaultServiceId?: string | null;
   msTimezone?: string | null;

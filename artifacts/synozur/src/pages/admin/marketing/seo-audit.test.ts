@@ -71,10 +71,10 @@ test("FILLABLE_KEYS: og_image_missing is absent (pure warning, not patchable)", 
   );
 });
 
-test("FILLABLE_KEYS: seoTitleLong is absent (wand button autofills via seoTitle key)", () => {
+test("FILLABLE_KEYS: seoTitleLong is present (wand button shortens the title via seoTitle key)", () => {
   assert.ok(
-    !FILLABLE_KEYS.has("seoTitleLong"),
-    'FILLABLE_KEYS must not contain "seoTitleLong" — the suggested fix is written via the "seoTitle" key',
+    FILLABLE_KEYS.has("seoTitleLong"),
+    'FILLABLE_KEYS must contain "seoTitleLong" — the wand shortens overlong titles via the "seoTitle" column',
   );
 });
 

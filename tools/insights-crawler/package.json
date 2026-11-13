@@ -10,6 +10,8 @@
     "ingest": "tsx ./src/ingest.ts",
     "faq": "tsx ./src/faq.ts",
     "backfill-authors": "tsx ./src/backfill-authors.ts",
+    "restore:preflight": "tsx ./src/restore-preflight-cli.ts",
+    "test:restore-preflight": "tsx --test ./src/restore-preflight.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

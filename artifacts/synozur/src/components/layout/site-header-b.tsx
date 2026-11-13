@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef, FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  Menu, X, Search, Globe, LogOut, LayoutDashboard,
+  Menu, X, Search, LogOut, LayoutDashboard, ChevronDown,
+  Newspaper, CalendarDays, Mic, MonitorPlay, Wrench, Boxes, FileText, Library,
 } from "lucide-react";
 import { LOGO_COLOR_URL } from "@workspace/synozur-nav";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -26,21 +27,28 @@ import {
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 
-const PRIMARY_NAV = [
+const MAIN_NAV = [
   { name: "Home",       href: "/" },
   { name: "The Sprint", href: "/sprint" },
   { name: "Proof",      href: "/proof"  },
   { name: "Fit",        href: "/fit"    },
+  { name: "Method",     href: "/services-overview/default" },
+  { name: "About",      href: "/about"  },
 ];
 
-const SECONDARY_NAV = [
-  { name: "About",    href: "/about"                   },
-  { name: "Method",   href: "/services-overview/default"},
-  { name: "Insights", href: "/insights"                 },
-  { name: "Events",   href: "/events"                  },
+const RESOURCES_HUB = [
+  { icon: Newspaper,    label: "Insights Blog",    desc: "Our blog — articles & analysis", href: "/insights"  },
+  { icon: CalendarDays, label: "Events",           desc: "Upcoming & past",           href: "/events"    },
+  { icon: Mic,          label: "Polaris Podcast",  desc: "Episodes & shownotes",      href: "/polaris"   },
+  { icon: MonitorPlay,  label: "Webinars",         desc: "On-demand sessions",        href: "/webinars"  },
+  { icon: Wrench,       label: "Workshops",        desc: "Hands-on programs",         href: "/workshops" },
+  { icon: Boxes,        label: "Models",           desc: "Frameworks & tools",        href: "/models"    },
+  { icon: FileText,     label: "Case Studies",     desc: "Client outcomes",           href: "/case-studies" },
+  { icon: Library,      label: "Browse Library",   desc: "Everything, filterable",    href: "/library"   },
 ];
 
 const BOOK_HREF = "/book";
+const RESOURCES_HUB_HREF = "/resources";
 const DIALOG_RESULT_LIMIT = 15;
 
 // Most pages render a dark PageHero (bg-[#0B0B1A]) at the very top regardless of
@@ -95,16 +103,16 @@ function UserButton({ user, signOut, onDark }: { user: AuthedUser; signOut: () =
         aria-haspopup="true"
         aria-label="Account menu"
         data-testid="button-user-menu"
-        className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors text-sm ${onDark ? "hover:bg-white/10" : "hover:bg-foreground/10"}`}
+        className={`flex items-center gap-2 rounded-lg px-2 py-1 transition-colors text-sm ${onDark ? "hover:bg-white/10" : "hover:bg-foreground/10"}`}
       >
         {user.avatarUrl ? (
-          <img src={user.avatarUrl} alt={shortName} className="h-7 w-7 rounded-full object-cover flex-shrink-0" />
+          <img src={user.avatarUrl} alt={shortName} className="h-6 w-6 rounded-full object-cover flex-shrink-0" />
         ) : (
-          <span className="h-7 w-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground flex-shrink-0">
+          <span className="h-6 w-6 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground flex-shrink-0">
             {initial}
           </span>
         )}
-        <span className={`hidden sm:block font-medium truncate max-w-[100px] ${onDark ? "text-white/80" : "text-foreground/80"}`}>{shortName}</span>
+        <span className={`hidden sm:block font-medium truncate max-w-[80px] text-xs ${onDark ? "text-white/80" : "text-foreground/80"}`}>{shortName}</span>
       </button>
 
       {open && (
@@ -125,7 +133,6 @@ function UserButton({ user, signOut, onDark }: { user: AuthedUser; signOut: () =
           )}
           <a href="/galaxy/" role="menuitem" onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-muted transition-colors">
-            <Globe className="h-4 w-4 text-muted-foreground" />
             Galaxy portal
           </a>
           <button role="menuitem" onClick={() => { setOpen(false); void signOut(); }}
@@ -139,6 +146,82 @@ function UserButton({ user, signOut, onDark }: { user: AuthedUser; signOut: () =
   );
 }
 
+// ── ResourcesDropdown ─────────────────────────────────────────────────────────
+
+function ResourcesDropdown({ overDark, isActive }: { overDark: boolean; isActive: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, []);
+
+  const navIdle = "text-white/75 hover:text-white hover:bg-white/10";
+  const navScrolled = "text-foreground/75 hover:text-foreground hover:bg-foreground/10";
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="true"
+        onClick={() => setOpen(v => !v)}
+        className={`flex items-center gap-1 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+          isActive
+            ? "text-primary bg-primary/10"
+            : overDark ? navIdle : navScrolled
+        }`}
+      >
+        Resources
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className={`absolute left-1/2 -translate-x-1/2 top-full mt-2 w-[600px] rounded-xl border shadow-2xl z-50 p-4 grid grid-cols-2 gap-1 ${
+          overDark ? "bg-[#14142a] border-white/10" : "bg-popover border-border"
+        }`}>
+          {RESOURCES_HUB.map(({ icon: Icon, label, desc, href }) => (
+            <Link
+              key={label}
+              href={href}
+              onClick={() => setOpen(false)}
+              className={`flex items-start gap-3 rounded-lg p-2.5 transition-colors ${
+                overDark ? "hover:bg-white/5" : "hover:bg-muted"
+              }`}
+            >
+              <Icon className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
+              <span>
+                <span className={`block text-sm font-medium ${overDark ? "text-white/90" : "text-foreground"}`}>{label}</span>
+                <span className={`block text-xs ${overDark ? "text-white/40" : "text-muted-foreground"}`}>{desc}</span>
+              </span>
+            </Link>
+          ))}
+          <Link
+            href={RESOURCES_HUB_HREF}
+            onClick={() => setOpen(false)}
+            className={`col-span-2 mt-1 pt-2.5 border-t text-center text-xs font-semibold transition-colors ${
+              overDark ? "border-white/10 text-primary hover:text-primary/80" : "border-border text-primary hover:text-primary/80"
+            }`}
+          >
+            Visit the Resources hub →
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── SiteHeaderB ───────────────────────────────────────────────────────────────
 
 export function SiteHeaderB() {
@@ -146,8 +229,9 @@ export function SiteHeaderB() {
   const { isSignedIn, user, signOut } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
 
-  // ── Search state (mirrors main header) ──────────────────────────────────────
+  // ── Search state ─────────────────────────────────────────────────────────────
   const [searchOpen, setSearchOpen]       = useState(false);
   const [searchQuery, setSearchQuery]     = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -254,19 +338,17 @@ export function SiteHeaderB() {
   })();
 
   const isActive = (href: string) => location === href || location.startsWith(href + "/");
+  const isResourcesActive = RESOURCES_HUB.some(r => isActive(r.href)) || isActive(RESOURCES_HUB_HREF);
   const shortcutMod = isMacPlatform ? "⌘" : "Ctrl";
-  const shortcutAria = isMacPlatform ? "Command+K" : "Control+K";
 
-  // Utility pages (see LIGHT_TOP_PREFIXES) start on a light bg-background
-  // surface, so even the unscrolled header must use theme-foreground text to
-  // stay legible in light mode. Once scrolled, the header is a solid
-  // bg-background and always uses foreground tokens.
+  // Utility pages start on a light surface; over those, use foreground tokens.
   const topOnDark = !isLightTopRoute(location);
   // White (over-dark) treatment applies only at the top of a dark-hero page.
   const overDark = topOnDark && !isScrolled;
 
-  const navIdle = "text-white/75 hover:text-white hover:bg-white/10";
-  const navScrolled = "text-foreground/75 hover:text-foreground hover:bg-foreground/10";
+  const utilityText = overDark
+    ? "text-white/60 hover:text-white"
+    : "text-foreground/60 hover:text-foreground";
   const controlIdle =
     "border-white/20 bg-white/5 text-white/80 hover:text-white hover:bg-white/10";
   const controlScrolled =
@@ -274,12 +356,58 @@ export function SiteHeaderB() {
 
   return (
     <>
+      {/* ── Utility strip (collapses on scroll) ─────────────────────────────── */}
+      <div
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          isScrolled
+            ? "opacity-0 pointer-events-none h-0 overflow-hidden"
+            : topOnDark ? "border-b border-white/10" : "border-b border-border"
+        }`}
+        aria-hidden={isScrolled}
+      >
+        <div className={`${topOnDark ? "bg-transparent" : "bg-background/80 backdrop-blur-sm"}`}>
+          <div className="container mx-auto px-4 md:px-6 h-8 flex items-center justify-end gap-4">
+            {/* Search */}
+            <button
+              type="button"
+              aria-label={`Open search (${isMacPlatform ? "⌘K" : "Ctrl+K"})`}
+              onClick={() => setSearchOpen(true)}
+              data-testid="header-search-button"
+              className={`hidden lg:inline-flex items-center gap-1.5 text-xs transition-colors ${utilityText}`}
+            >
+              <Search className="h-3.5 w-3.5" />
+              Search
+              <kbd className={`inline-flex h-4 items-center rounded border px-1 font-mono text-[9px] ${
+                overDark ? "border-white/15 text-white/40" : "border-border text-muted-foreground"
+              }`}>
+                {shortcutMod}K
+              </kbd>
+            </button>
+
+            {/* Theme toggle */}
+            <ThemeToggle />
+
+            {/* Sign in / user */}
+            {isSignedIn && user ? (
+              <UserButton user={user} signOut={signOut} onDark={overDark} />
+            ) : (
+              <Link
+                href="/sign-in"
+                className={`hidden lg:inline-flex items-center text-xs font-medium transition-colors ${utilityText}`}
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* ── Main bar ───────────────────────────────────────────────────────── */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
+        className={`fixed left-0 right-0 z-50 transition-all duration-300 border-b ${
           isScrolled
-            ? "bg-background/90 backdrop-blur-md border-border/50 shadow-md"
-            : "bg-transparent border-transparent"
+            ? "top-0 bg-background/90 backdrop-blur-md border-border/50 shadow-md"
+            : "top-8 bg-transparent border-transparent"
         }`}
       >
         <div className="container mx-auto px-4 md:px-6 h-16 flex items-center gap-3">
@@ -308,74 +436,38 @@ export function SiteHeaderB() {
             </Link>
           </div>
 
-          {/* ── Center: Primary nav (desktop) ────────────────────────────── */}
+          {/* ── Center: merged nav (desktop) ─────────────────────────────── */}
           <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
-            {PRIMARY_NAV.map(link => (
+            {MAIN_NAV.map(link => (
               <Link
                 key={link.name}
                 href={link.href}
                 className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
                   isActive(link.href)
                     ? "text-primary bg-primary/10"
-                    : overDark ? navIdle : navScrolled
+                    : overDark
+                      ? "text-white/75 hover:text-white hover:bg-white/10"
+                      : "text-foreground/75 hover:text-foreground hover:bg-foreground/10"
                 }`}
               >
                 {link.name}
               </Link>
             ))}
 
+            {/* Resources dropdown */}
+            <ResourcesDropdown overDark={overDark} isActive={isResourcesActive} />
+          </nav>
+
+          {/* ── Right: Book CTA + mobile hamburger ───────────────────────── */}
+          <div className="ml-auto lg:ml-0 flex items-center gap-2">
             <Link
               href={BOOK_HREF}
-              className={`ml-2 h-9 px-5 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-semibold transition-colors hover:bg-primary/90 shadow-[0_0_16px_rgba(129,15,251,0.35)] ${
+              className={`hidden lg:inline-flex h-9 px-5 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-semibold transition-colors hover:bg-primary/90 shadow-[0_0_16px_rgba(129,15,251,0.35)] ${
                 isActive(BOOK_HREF) ? "ring-2 ring-primary/40 ring-offset-2 ring-offset-background" : ""
               }`}
             >
               Book
             </Link>
-          </nav>
-
-          {/* ── Right: chrome controls ───────────────────────────────────── */}
-          <div className="ml-auto lg:ml-0 flex items-center gap-1.5">
-            {/* Search */}
-            <button
-              type="button"
-              aria-label={`Open search (${shortcutAria})`}
-              onClick={() => setSearchOpen(true)}
-              data-testid="header-search-button"
-              className={`hidden lg:inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm transition-colors ${overDark ? controlIdle : controlScrolled}`}
-            >
-              <Search className="h-4 w-4" />
-              <span className="hidden xl:inline">Search…</span>
-              <kbd className={`hidden xl:inline-flex h-5 select-none items-center gap-0.5 rounded border px-1.5 font-mono text-[10px] ${overDark ? "border-white/15 bg-white/5 text-white/50" : "border-border bg-foreground/5 text-muted-foreground"}`}>
-                {shortcutMod}K
-              </kbd>
-            </button>
-
-            {/* Theme toggle */}
-            <ThemeToggle />
-
-            {/* Galaxy Portal (signed-in only) */}
-            {isSignedIn && (
-              <a
-                href="/galaxy/"
-                className="hidden lg:inline-flex items-center gap-1.5 h-9 rounded-md border border-primary/40 bg-primary/10 px-3 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
-              >
-                <Globe className="h-3.5 w-3.5" />
-                Galaxy
-              </a>
-            )}
-
-            {/* User / Sign in */}
-            {isSignedIn && user ? (
-              <UserButton user={user} signOut={signOut} onDark={overDark} />
-            ) : (
-              <Link
-                href="/sign-in"
-                className={`hidden lg:inline-flex h-9 items-center justify-center rounded-md border px-4 text-sm font-medium transition-colors ${overDark ? controlIdle : controlScrolled}`}
-              >
-                Sign in
-              </Link>
-            )}
 
             {/* Mobile hamburger */}
             <button
@@ -387,31 +479,6 @@ export function SiteHeaderB() {
             >
               {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
-          </div>
-        </div>
-
-        {/* ── Secondary nav sub-bar (desktop, fades on scroll) ─────────────── */}
-        <div
-          className={`hidden lg:block border-t transition-all duration-300 ${
-            isScrolled
-              ? "border-transparent opacity-0 pointer-events-none h-0 overflow-hidden"
-              : `${topOnDark ? "border-white/10" : "border-border"} opacity-100`
-          }`}
-        >
-          <div className="container mx-auto px-4 md:px-6 h-9 flex items-center justify-center gap-8">
-            {SECONDARY_NAV.map(link => (
-              <Link
-                key={link.name}
-                href={link.href}
-                className={`text-xs font-medium tracking-wide transition-colors ${
-                  isActive(link.href)
-                    ? (topOnDark ? "text-white/90" : "text-foreground/90")
-                    : (topOnDark ? "text-white/50 hover:text-white/80" : "text-foreground/50 hover:text-foreground/80")
-                }`}
-              >
-                {link.name}
-              </Link>
-            ))}
           </div>
         </div>
 
@@ -436,8 +503,8 @@ export function SiteHeaderB() {
                 </div>
               </form>
 
-              {/* Primary */}
-              {PRIMARY_NAV.map(link => (
+              {/* Primary nav links */}
+              {MAIN_NAV.map(link => (
                 <Link
                   key={link.name}
                   href={link.href}
@@ -456,20 +523,36 @@ export function SiteHeaderB() {
                 Book the Sprint
               </Link>
 
-              {/* Secondary */}
-              <div className="pt-3 mt-3 border-t border-border/50 space-y-1">
-                <p className="px-3 pb-1 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-                  More
-                </p>
-                {SECONDARY_NAV.map(link => (
-                  <Link
-                    key={link.name}
-                    href={link.href}
-                    className="block px-3 py-2 rounded-md text-sm text-foreground/55 hover:text-foreground/90 hover:bg-muted transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                ))}
+              {/* Resources group */}
+              <div className="pt-3 mt-3 border-t border-border/50">
+                <button
+                  type="button"
+                  onClick={() => setMobileResourcesOpen(v => !v)}
+                  className="flex items-center justify-between w-full px-3 pb-2 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold"
+                >
+                  Resources
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${mobileResourcesOpen ? "rotate-180" : ""}`} />
+                </button>
+                {mobileResourcesOpen && (
+                  <div className="grid grid-cols-2 gap-1">
+                    {RESOURCES_HUB.map(({ icon: Icon, label, href }) => (
+                      <Link
+                        key={label}
+                        href={href}
+                        className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-foreground/70 hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Icon className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        {label}
+                      </Link>
+                    ))}
+                    <Link
+                      href={RESOURCES_HUB_HREF}
+                      className="col-span-2 px-3 py-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Visit the Resources hub →
+                    </Link>
+                  </div>
+                )}
               </div>
 
               {/* Auth */}

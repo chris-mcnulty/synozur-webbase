@@ -66,6 +66,7 @@ interface Draft {
   // Classification — empty-string sentinels mean "no value", since the
   // <Select /> components used below treat undefined as uncontrolled.
   featured: boolean;
+  libraryListed: boolean;
   featuredRank: string;
   pillar: LandingPagePillar | "";
   serviceId: string;
@@ -133,6 +134,7 @@ const EMPTY_DRAFT: Draft = {
   seoCanonicalUrl: "",
   ogImageUrl: "",
   featured: false,
+  libraryListed: false,
   featuredRank: "",
   pillar: "",
   serviceId: "",
@@ -158,6 +160,7 @@ function toDraft(p: LandingPageDto): Draft {
     seoCanonicalUrl: p.seoCanonicalUrl ?? "",
     ogImageUrl: p.ogImageUrl ?? "",
     featured: p.featured,
+    libraryListed: p.libraryListed ?? false,
     featuredRank: p.featuredRank != null ? String(p.featuredRank) : "",
     pillar: p.pillar ?? "",
     serviceId: p.serviceId ?? "",
@@ -202,6 +205,7 @@ function draftToInput(draft: Draft) {
     seoCanonicalUrl: draft.seoCanonicalUrl || null,
     ogImageUrl: draft.ogImageUrl || null,
     featured: draft.featured,
+    libraryListed: draft.libraryListed,
     featuredRank: parsedRank,
     pillar: draft.pillar === "" ? null : draft.pillar,
     serviceId: draft.serviceId || null,
@@ -658,7 +662,23 @@ export default function LandingPageEdit({ id }: Props) {
                 alongside other published content.
               </p>
               {/* Collateral library status — derived from the current draft */}
-              {draft.featured && draft.status === "published" ? (
+              <div className="flex items-center justify-between">
+                <Label htmlFor="lp-library-listed" className="text-sm font-medium">
+                  List in Library
+                </Label>
+                <Switch
+                  id="lp-library-listed"
+                  checked={draft.libraryListed}
+                  onCheckedChange={(v) => setDraft({ ...draft, libraryListed: v })}
+                  disabled={!canWrite}
+                  data-testid="switch-landing-page-library-listed"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Include this published page in the Library without featuring it
+                on the homepage.
+              </p>
+              {(draft.featured || draft.libraryListed) && draft.status === "published" ? (
                 <div className="flex items-center gap-1.5 text-xs text-emerald-400">
                   <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
                   In collateral library — synced automatically on save
@@ -667,10 +687,10 @@ export default function LandingPageEdit({ id }: Props) {
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40 shrink-0" />
                   Not in library —{" "}
-                  {!draft.featured && draft.status !== "published"
-                    ? "requires Published status + Featured"
-                    : !draft.featured
-                      ? "enable Featured above"
+                  {!(draft.featured || draft.libraryListed) && draft.status !== "published"
+                    ? "requires Published status + Library listing or Featured"
+                    : !(draft.featured || draft.libraryListed)
+                      ? "enable List in Library or Featured above"
                       : "set status to Published"}
                 </div>
               )}

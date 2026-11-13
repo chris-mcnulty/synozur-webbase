@@ -152,10 +152,12 @@ import MarketingSeo from "@/pages/admin/marketing/seo";
 import MarketingSeoAudit from "@/pages/admin/marketing/seo-audit";
 import MarketingSeoCoverage from "@/pages/admin/marketing/seo-coverage";
 import MarketingSubscribers from "@/pages/admin/marketing/subscribers";
+import ChapterAudioPage from "@/pages/admin/chapter-audio";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { IdleWarningDialog } from "@/components/idle-warning-dialog";
 import { ErrorBoundary, RouteErrorFallback } from "@/components/error-boundary";
 import Library from "@/pages/library";
+import ResourcesHub from "@/pages/resources";
 import SearchPage from "@/pages/search";
 import LibraryDetail from "@/pages/library-detail";
 import Webinars from "@/pages/webinars";
@@ -495,6 +497,9 @@ function AdminRoutes() {
         {/* Storage / infra integrations */}
         <Route path="/integrations/spe" component={SpeAdminPage} />
 
+        {/* Chapter Audio (dev only for this release) */}
+        <Route path="/chapter-audio" component={ChapterAudioPage} />
+
         {/* Account section */}
         <Route path="/account/profile" component={AdminProfile} />
         <Route path="/account/sessions" component={AdminActiveSessions} />
@@ -579,6 +584,7 @@ function Router() {
             <Route path="/models/:slug" component={ModelDetail} />
             <Route path="/workshops" component={Workshops} />
             <Route path="/workshops/:slug" component={WorkshopDetail} />
+            <Route path="/resources" component={ResourcesHub} />
             <Route path="/library" component={Library} />
             <Route path="/search" component={SearchPage} />
             <Route path="/library/:slug" component={LibraryDetail} />

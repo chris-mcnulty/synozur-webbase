@@ -14,6 +14,7 @@ import {
   type CardGridCard,
   type LandingPageCTA,
 } from "@/lib/api-landing-pages";
+import { sectionId, isHashOnly } from "@/lib/section-anchor";
 import NotFound from "@/pages/not-found";
 import { EditWedge } from "@/components/edit-wedge";
 
@@ -51,6 +52,14 @@ function Cta({ cta }: { cta: LandingPageCTA }) {
   if (isExternal(cta.href)) {
     return (
       <a href={cta.href} target="_blank" rel="noopener noreferrer" className={cls}>
+        {cta.label}
+        {isPrimary && <ArrowRight className="h-4 w-4" />}
+      </a>
+    );
+  }
+  if (isHashOnly(cta.href)) {
+    return (
+      <a href={cta.href} className={cls}>
         {cta.label}
         {isPrimary && <ArrowRight className="h-4 w-4" />}
       </a>
@@ -112,7 +121,7 @@ function HeroSection(block: Extract<LandingPageBlock, { type: "hero" }>) {
 
 function RichTextSection(block: Extract<LandingPageBlock, { type: "richText" }>) {
   return (
-    <section className="bg-background py-16 md:py-20">
+    <section id={sectionId(block.heading)} className="scroll-mt-28 bg-background py-16 md:py-20">
       <div className="container mx-auto max-w-3xl px-4">
         {block.heading && (
           <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl">
@@ -120,7 +129,7 @@ function RichTextSection(block: Extract<LandingPageBlock, { type: "richText" }>)
           </h2>
         )}
         <div
-          className="prose prose-invert max-w-none"
+          className="prose dark:prose-invert max-w-none"
           // Sanitise on render so HTML pasted directly into the admin
           // editor (or written before the upstream sanitiser existed) can't
           // smuggle scripts past us.
@@ -133,7 +142,7 @@ function RichTextSection(block: Extract<LandingPageBlock, { type: "richText" }>)
 
 function CardGridSection(block: Extract<LandingPageBlock, { type: "cardGrid" }>) {
   return (
-    <section className="bg-background py-20 md:py-24">
+    <section id={sectionId(block.heading)} className="scroll-mt-28 bg-background py-20 md:py-24">
       <div className="container mx-auto max-w-6xl px-4">
         {(block.heading || block.intro) && (
           <div className="mb-10 max-w-2xl">
@@ -230,22 +239,23 @@ function CtaSection(block: Extract<LandingPageBlock, { type: "cta" }>) {
   const dark = (block.theme ?? "nebula") === "nebula";
   return (
     <section
+      id={sectionId(block.heading)}
       className={
-        dark
+        "scroll-mt-28 " + (dark
           ? "relative overflow-hidden border-t border-border bg-[#0B0B1A] py-20"
-          : "border-t border-border bg-background py-20"
+          : "border-t border-border bg-background py-20")
       }
     >
       {dark && <div className="absolute inset-0 nebula-gradient opacity-15" />}
       <div className="container relative z-10 mx-auto max-w-3xl px-4 text-center">
-        <h2
+        {block.heading && <h2
           className={
             "mb-4 text-3xl font-bold tracking-tight md:text-4xl " +
             (dark ? "text-white" : "")
           }
         >
           {block.heading}
-        </h2>
+        </h2>}
         {block.body && (
           <p
             className={
@@ -289,7 +299,7 @@ function ImageSection(block: Extract<LandingPageBlock, { type: "image" }>) {
 
 function FaqSection(block: Extract<LandingPageBlock, { type: "faq" }>) {
   return (
-    <section className="bg-background py-20">
+    <section id={sectionId(block.heading)} className="scroll-mt-28 bg-background py-20">
       <div className="container mx-auto max-w-3xl px-4">
         {block.heading && (
           <h2 className="mb-8 text-3xl font-bold tracking-tight md:text-4xl">
@@ -433,6 +443,7 @@ export default function LandingPageView({ slug }: Props) {
     <div className="w-full">
       <Meta
         title={data.seoTitle ?? data.title}
+        rawTitle={Boolean(data.seoTitle?.endsWith(` | ${SITE_NAME}`))}
         description={data.seoDescription ?? undefined}
         canonicalPath={canonicalPath}
         image={data.ogImageUrl ?? undefined}

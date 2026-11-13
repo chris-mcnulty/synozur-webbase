@@ -27,6 +27,9 @@ const CSP_DIRECTIVES: Record<string, string[]> = {
   // GA4, LinkedIn, Meta, and the inline pre-hydration theme script all need
   // 'unsafe-inline'; same-origin Vite-built bundles are covered by 'self'.
   // Cloudflare Turnstile loads its widget JS from challenges.cloudflare.com.
+  // HubSpot tracking pixel (js.hs-scripts.com) dynamically injects several
+  // sub-scripts from hs-analytics.net, hs-banner.com, hscollectedforms.net,
+  // and hsadspixel.net — all must be listed explicitly.
   scriptSrc: [
     "'self'",
     "'unsafe-inline'",
@@ -35,6 +38,12 @@ const CSP_DIRECTIVES: Record<string, string[]> = {
     "https://snap.licdn.com",
     "https://connect.facebook.net",
     "https://challenges.cloudflare.com",
+    // HubSpot tracking pixel and its dynamically injected sub-scripts
+    "https://js.hs-scripts.com",
+    "https://*.hs-analytics.net",
+    "https://*.hs-banner.com",
+    "https://*.hscollectedforms.net",
+    "https://*.hsadspixel.net",
   ],
   styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
   fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
@@ -68,20 +77,28 @@ const CSP_DIRECTIVES: Record<string, string[]> = {
     "https://www.podtrac.com",
     // Scheduling / booking
     "https://outlook.office365.com",
+    "https://bookings.cloud.microsoft",
     "https://*.bookings.microsoft.com",
     // Other
     "https://www.google.com",
     "https://challenges.cloudflare.com",
   ],
   // Cloudflare Turnstile makes validation XHR calls back to challenges.cloudflare.com.
+  // GA4 sends beacons to both analytics.google.com (base) and its subdomains —
+  // the wildcard *.analytics.google.com does NOT cover the apex, so list both.
+  // HubSpot's pixel config calls go to *.hubapi.com and *.hscollectedforms.net.
   connectSrc: [
     "'self'",
     "https://www.google-analytics.com",
+    "https://analytics.google.com",
     "https://*.analytics.google.com",
     "https://stats.g.doubleclick.net",
     "https://px.ads.linkedin.com",
     "https://www.facebook.com",
     "https://challenges.cloudflare.com",
+    // HubSpot pixel config and forms-collected API endpoints
+    "https://*.hubapi.com",
+    "https://*.hscollectedforms.net",
   ],
   objectSrc: ["'none'"],
   baseUri: ["'self'"],

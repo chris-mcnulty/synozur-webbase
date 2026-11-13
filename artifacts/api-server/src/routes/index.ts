@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import chapterAudioRouter from "./chapterAudio";
 import healthRouter from "./health";
 import storageRouter from "./storage";
 import adminRouter from "./admin";
@@ -75,8 +76,10 @@ import adminExperimentsRouter from "./adminExperiments";
 import cmsApiKeysRouter from "./cms/apiKeys";
 import briefingPodcastRouter from "./briefingPodcast";
 import mcpRouter from "./mcp";
+import engagementsAdminRouter from "./engagementsAdmin";
 
 const router: IRouter = Router();
+router.use(chapterAudioRouter);
 
 router.use(healthRouter);
 router.use(storageRouter);
@@ -154,5 +157,6 @@ router.use(adminExperimentsRouter);
 router.use(cmsApiKeysRouter);
 router.use(briefingPodcastRouter);
 router.use(mcpRouter);
+router.use(engagementsAdminRouter);
 
 export default router;

@@ -1,0 +1,30 @@
+{
+  "approval": "you dont need to verify the copies can be deleted",
+  "scope": "Only the original video and the two Tribal decks individually reviewed with the owner",
+  "owner_reported_master_location": "Offline in M365",
+  "owner_confirmed_video_storage_rights": true,
+  "external_download_verified": false,
+  "restore_verified": false,
+  "verification_waived_by_owner": true,
+  "new_archive_created": false,
+  "paths": [
+    {
+      "path": "attached_assets/AdobeStock_336446857_1777150682190.mov",
+      "bytes": 135484313,
+      "sha256": "9d0656b29bf3c73bce073eeffe9e9686530cd7e2a535e1e75414af73bb2ec4a9",
+      "provenance": "Original 4K Adobe Stock video; owner reports master in M365 and confirms license allows storage there"
+    },
+    {
+      "path": "attached_assets/The_Champion_System_Making_AI_Adoption_Stick_-_First_Nations__1792021848284.pptx",
+      "bytes": 25024502,
+      "sha256": "a8469de6a2cbe793ee5a124a73a21fb0581627cdb89b88dc6a45343008e6dead",
+      "provenance": "Corrected controlling seven-slide Tribal deck; owner identifies upload as completed-work reference copy and reports external master"
+    },
+    {
+      "path": "attached_assets/The_Champion_System_Making_AI_Adoption_Stick_-_First_Nations_1792014756727.pptx",
+      "bytes": 25026167,
+      "sha256": "14e3e9c9b3f5c7888ca31c5c7889c3003bf019c90a298fad0682e932161537d5",
+      "provenance": "Superseded eight-slide Tribal attachment, not content authority; owner reports external copy"
+    }
+  ]
+}

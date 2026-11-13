@@ -46,6 +46,10 @@ export const engagementsTable = pgTable(
     // haven't been wired up yet. Stored as text so admins can correct
     // typos without a migration.
     spePath: text("spe_path"),
+    // HubSpot CRM Deal ID for the matching Deal object. Set by the hubspot
+    // sync worker after a successful deal.upsert; NULL means the engagement
+    // has not yet been synced (or HubSpot is not configured).
+    hubspotDealId: text("hubspot_deal_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

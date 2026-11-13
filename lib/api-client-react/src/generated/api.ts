@@ -31,13 +31,28 @@ import type {
   AssetCategory,
   AssetCategoryListResponse,
   AssetInput,
+  AvatarUploadResult,
   BadRequestResponse,
   BatchViewsResult,
+  BookingRecord,
+  BookingRecordFields,
+  BookingRecordInput,
   BulkSetMediaCategoryBody,
   BulkSetMediaCategoryResponse,
   Capability,
   CapabilityItemsResponse,
   Category,
+  ChapterAudioActionResult,
+  ChapterAudioEstimate,
+  ChapterAudioEstimateInput,
+  ChapterAudioExtraction,
+  ChapterAudioHistory,
+  ChapterAudioInput,
+  ChapterAudioJob,
+  ChapterAudioMonthlyCosts,
+  ChapterAudioRate,
+  ChapterAudioRateInput,
+  ChapterPublication,
   CmsGetSiteHealthParams,
   CmsListCollateralParams,
   CmsListPublishBlocksParams,
@@ -61,17 +76,22 @@ import type {
   CreateVariantBody,
   CurrentUser,
   CwvSampleInput,
+  DownloadChapterAudioParams,
   DownloadPortalDocumentParams,
   DownloadPortalDocumentVersionParams,
+  EntraUserConflict,
+  EntraUserInput,
   ErrorEnvelope,
   EventInput,
   EventRegistrationBody,
   EventRegistrationResponse,
   ExportAdminFormSubmissionsParams,
   ExportAuditLogCsvParams,
+  ExtractChapterAudioParams,
   ForbiddenResponse,
   FormSubmissionAck,
   GetActiveExperimentsResponse,
+  GetChapterAudioCostsParams,
   GetCmsAnalyticsOverviewParams,
   GetCmsBatchViewsParams,
   GetCmsPostAnalyticsParams,
@@ -90,6 +110,7 @@ import type {
   ListCmsMediaParams,
   ListCmsPolarisEpisodes200,
   ListCmsPostsParams,
+  ListCmsUsersParams,
   ListInsightsParams,
   ListLibraryAssetsParams,
   ListPolarisEpisodesParams,
@@ -100,6 +121,7 @@ import type {
   ListPortalApps200,
   ListPortalDocumentsParams,
   ListPortalEngagements200,
+  ListPublicBookings200,
   ListSolutionsParams,
   MediaItem,
   MediaListResponse,
@@ -197,6 +219,1451 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * Returns a public photo URL. Apply it with Save profile. Accepts JPEG, PNG or WebP up to 5 MB.
+ * @summary Upload a profile photo to Microsoft SharePoint Embedded
+ */
+export const getUploadProfileAvatarUrl = () => {
+  return `/api/cms/profile/avatar`;
+};
+
+export const uploadProfileAvatar = async (
+  uploadProfileAvatarBody: Blob,
+  options?: RequestInit,
+): Promise<AvatarUploadResult> => {
+  return customFetch<AvatarUploadResult>(getUploadProfileAvatarUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      ...options?.headers,
+    },
+    body: JSON.stringify(uploadProfileAvatarBody),
+  });
+};
+
+export const getUploadProfileAvatarMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadProfileAvatar>>,
+    TError,
+    { data: BodyType<Blob> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadProfileAvatar>>,
+  TError,
+  { data: BodyType<Blob> },
+  TContext
+> => {
+  const mutationKey = ["uploadProfileAvatar"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadProfileAvatar>>,
+    { data: BodyType<Blob> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return uploadProfileAvatar(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadProfileAvatarMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadProfileAvatar>>
+>;
+export type UploadProfileAvatarMutationBody = BodyType<Blob>;
+export type UploadProfileAvatarMutationError = ErrorType<void>;
+
+/**
+ * @summary Upload a profile photo to Microsoft SharePoint Embedded
+ */
+export const useUploadProfileAvatar = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadProfileAvatar>>,
+    TError,
+    { data: BodyType<Blob> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadProfileAvatar>>,
+  TError,
+  { data: BodyType<Blob> },
+  TContext
+> => {
+  return useMutation(getUploadProfileAvatarMutationOptions(options));
+};
+
+export const getEstimateChapterAudioUrl = () => {
+  return `/api/cms/chapter-audio/estimate`;
+};
+
+export const estimateChapterAudio = async (
+  chapterAudioEstimateInput: ChapterAudioEstimateInput,
+  options?: RequestInit,
+): Promise<ChapterAudioEstimate> => {
+  return customFetch<ChapterAudioEstimate>(getEstimateChapterAudioUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chapterAudioEstimateInput),
+  });
+};
+
+export const getEstimateChapterAudioMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof estimateChapterAudio>>,
+    TError,
+    { data: BodyType<ChapterAudioEstimateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof estimateChapterAudio>>,
+  TError,
+  { data: BodyType<ChapterAudioEstimateInput> },
+  TContext
+> => {
+  const mutationKey = ["estimateChapterAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof estimateChapterAudio>>,
+    { data: BodyType<ChapterAudioEstimateInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return estimateChapterAudio(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EstimateChapterAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof estimateChapterAudio>>
+>;
+export type EstimateChapterAudioMutationBody =
+  BodyType<ChapterAudioEstimateInput>;
+export type EstimateChapterAudioMutationError = ErrorType<unknown>;
+
+export const useEstimateChapterAudio = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof estimateChapterAudio>>,
+    TError,
+    { data: BodyType<ChapterAudioEstimateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof estimateChapterAudio>>,
+  TError,
+  { data: BodyType<ChapterAudioEstimateInput> },
+  TContext
+> => {
+  return useMutation(getEstimateChapterAudioMutationOptions(options));
+};
+
+export const getSaveChapterAudioPricingUrl = () => {
+  return `/api/cms/chapter-audio/pricing`;
+};
+
+export const saveChapterAudioPricing = async (
+  chapterAudioRateInput: ChapterAudioRateInput,
+  options?: RequestInit,
+): Promise<ChapterAudioRate> => {
+  return customFetch<ChapterAudioRate>(getSaveChapterAudioPricingUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chapterAudioRateInput),
+  });
+};
+
+export const getSaveChapterAudioPricingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveChapterAudioPricing>>,
+    TError,
+    { data: BodyType<ChapterAudioRateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveChapterAudioPricing>>,
+  TError,
+  { data: BodyType<ChapterAudioRateInput> },
+  TContext
+> => {
+  const mutationKey = ["saveChapterAudioPricing"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveChapterAudioPricing>>,
+    { data: BodyType<ChapterAudioRateInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveChapterAudioPricing(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveChapterAudioPricingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveChapterAudioPricing>>
+>;
+export type SaveChapterAudioPricingMutationBody =
+  BodyType<ChapterAudioRateInput>;
+export type SaveChapterAudioPricingMutationError = ErrorType<unknown>;
+
+export const useSaveChapterAudioPricing = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveChapterAudioPricing>>,
+    TError,
+    { data: BodyType<ChapterAudioRateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveChapterAudioPricing>>,
+  TError,
+  { data: BodyType<ChapterAudioRateInput> },
+  TContext
+> => {
+  return useMutation(getSaveChapterAudioPricingMutationOptions(options));
+};
+
+export const getGetChapterAudioCostsUrl = (
+  params?: GetChapterAudioCostsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/chapter-audio/costs?${stringifiedParams}`
+    : `/api/cms/chapter-audio/costs`;
+};
+
+export const getChapterAudioCosts = async (
+  params?: GetChapterAudioCostsParams,
+  options?: RequestInit,
+): Promise<ChapterAudioMonthlyCosts> => {
+  return customFetch<ChapterAudioMonthlyCosts>(
+    getGetChapterAudioCostsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetChapterAudioCostsQueryKey = (
+  params?: GetChapterAudioCostsParams,
+) => {
+  return [`/api/cms/chapter-audio/costs`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetChapterAudioCostsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getChapterAudioCosts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetChapterAudioCostsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChapterAudioCosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetChapterAudioCostsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getChapterAudioCosts>>
+  > = ({ signal }) =>
+    getChapterAudioCosts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getChapterAudioCosts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetChapterAudioCostsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getChapterAudioCosts>>
+>;
+export type GetChapterAudioCostsQueryError = ErrorType<unknown>;
+
+export function useGetChapterAudioCosts<
+  TData = Awaited<ReturnType<typeof getChapterAudioCosts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetChapterAudioCostsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChapterAudioCosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetChapterAudioCostsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getListChapterAudioUrl = () => {
+  return `/api/cms/chapter-audio`;
+};
+
+export const listChapterAudio = async (
+  options?: RequestInit,
+): Promise<ChapterAudioHistory> => {
+  return customFetch<ChapterAudioHistory>(getListChapterAudioUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListChapterAudioQueryKey = () => {
+  return [`/api/cms/chapter-audio`] as const;
+};
+
+export const getListChapterAudioQueryOptions = <
+  TData = Awaited<ReturnType<typeof listChapterAudio>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChapterAudio>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListChapterAudioQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listChapterAudio>>
+  > = ({ signal }) => listChapterAudio({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listChapterAudio>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListChapterAudioQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listChapterAudio>>
+>;
+export type ListChapterAudioQueryError = ErrorType<unknown>;
+
+export function useListChapterAudio<
+  TData = Awaited<ReturnType<typeof listChapterAudio>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChapterAudio>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListChapterAudioQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateChapterAudioUrl = () => {
+  return `/api/cms/chapter-audio`;
+};
+
+export const createChapterAudio = async (
+  chapterAudioInput: ChapterAudioInput,
+  options?: RequestInit,
+): Promise<ChapterAudioJob> => {
+  return customFetch<ChapterAudioJob>(getCreateChapterAudioUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chapterAudioInput),
+  });
+};
+
+export const getCreateChapterAudioMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChapterAudio>>,
+    TError,
+    { data: BodyType<ChapterAudioInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createChapterAudio>>,
+  TError,
+  { data: BodyType<ChapterAudioInput> },
+  TContext
+> => {
+  const mutationKey = ["createChapterAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createChapterAudio>>,
+    { data: BodyType<ChapterAudioInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createChapterAudio(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateChapterAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createChapterAudio>>
+>;
+export type CreateChapterAudioMutationBody = BodyType<ChapterAudioInput>;
+export type CreateChapterAudioMutationError = ErrorType<unknown>;
+
+export const useCreateChapterAudio = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChapterAudio>>,
+    TError,
+    { data: BodyType<ChapterAudioInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createChapterAudio>>,
+  TError,
+  { data: BodyType<ChapterAudioInput> },
+  TContext
+> => {
+  return useMutation(getCreateChapterAudioMutationOptions(options));
+};
+
+export const getExtractChapterAudioUrl = (
+  params: ExtractChapterAudioParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/chapter-audio/extract?${stringifiedParams}`
+    : `/api/cms/chapter-audio/extract`;
+};
+
+export const extractChapterAudio = async (
+  extractChapterAudioBody: Blob,
+  params: ExtractChapterAudioParams,
+  options?: RequestInit,
+): Promise<ChapterAudioExtraction> => {
+  return customFetch<ChapterAudioExtraction>(
+    getExtractChapterAudioUrl(params),
+    {
+      ...options,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream",
+        ...options?.headers,
+      },
+      body: JSON.stringify(extractChapterAudioBody),
+    },
+  );
+};
+
+export const getExtractChapterAudioMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof extractChapterAudio>>,
+    TError,
+    { data: BodyType<Blob>; params: ExtractChapterAudioParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof extractChapterAudio>>,
+  TError,
+  { data: BodyType<Blob>; params: ExtractChapterAudioParams },
+  TContext
+> => {
+  const mutationKey = ["extractChapterAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof extractChapterAudio>>,
+    { data: BodyType<Blob>; params: ExtractChapterAudioParams }
+  > = (props) => {
+    const { data, params } = props ?? {};
+
+    return extractChapterAudio(data, params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ExtractChapterAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof extractChapterAudio>>
+>;
+export type ExtractChapterAudioMutationBody = BodyType<Blob>;
+export type ExtractChapterAudioMutationError = ErrorType<unknown>;
+
+export const useExtractChapterAudio = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof extractChapterAudio>>,
+    TError,
+    { data: BodyType<Blob>; params: ExtractChapterAudioParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof extractChapterAudio>>,
+  TError,
+  { data: BodyType<Blob>; params: ExtractChapterAudioParams },
+  TContext
+> => {
+  return useMutation(getExtractChapterAudioMutationOptions(options));
+};
+
+export const getSampleChapterAudioUrl = (voice: string) => {
+  return `/api/cms/chapter-audio/sample/${voice}`;
+};
+
+export const sampleChapterAudio = async (
+  voice: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getSampleChapterAudioUrl(voice), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSampleChapterAudioQueryKey = (voice: string) => {
+  return [`/api/cms/chapter-audio/sample/${voice}`] as const;
+};
+
+export const getSampleChapterAudioQueryOptions = <
+  TData = Awaited<ReturnType<typeof sampleChapterAudio>>,
+  TError = ErrorType<unknown>,
+>(
+  voice: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof sampleChapterAudio>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getSampleChapterAudioQueryKey(voice);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof sampleChapterAudio>>
+  > = ({ signal }) => sampleChapterAudio(voice, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!voice,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof sampleChapterAudio>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SampleChapterAudioQueryResult = NonNullable<
+  Awaited<ReturnType<typeof sampleChapterAudio>>
+>;
+export type SampleChapterAudioQueryError = ErrorType<unknown>;
+
+export function useSampleChapterAudio<
+  TData = Awaited<ReturnType<typeof sampleChapterAudio>>,
+  TError = ErrorType<unknown>,
+>(
+  voice: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof sampleChapterAudio>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSampleChapterAudioQueryOptions(voice, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getActionChapterAudioUrl = (
+  id: string,
+  action: "cancel" | "retry" | "delete",
+) => {
+  return `/api/cms/chapter-audio/${id}/${action}`;
+};
+
+export const actionChapterAudio = async (
+  id: string,
+  action: "cancel" | "retry" | "delete",
+  options?: RequestInit,
+): Promise<ChapterAudioActionResult> => {
+  return customFetch<ChapterAudioActionResult>(
+    getActionChapterAudioUrl(id, action),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getActionChapterAudioMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof actionChapterAudio>>,
+    TError,
+    { id: string; action: "cancel" | "retry" | "delete" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof actionChapterAudio>>,
+  TError,
+  { id: string; action: "cancel" | "retry" | "delete" },
+  TContext
+> => {
+  const mutationKey = ["actionChapterAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof actionChapterAudio>>,
+    { id: string; action: "cancel" | "retry" | "delete" }
+  > = (props) => {
+    const { id, action } = props ?? {};
+
+    return actionChapterAudio(id, action, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ActionChapterAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof actionChapterAudio>>
+>;
+
+export type ActionChapterAudioMutationError = ErrorType<unknown>;
+
+export const useActionChapterAudio = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof actionChapterAudio>>,
+    TError,
+    { id: string; action: "cancel" | "retry" | "delete" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof actionChapterAudio>>,
+  TError,
+  { id: string; action: "cancel" | "retry" | "delete" },
+  TContext
+> => {
+  return useMutation(getActionChapterAudioMutationOptions(options));
+};
+
+export const getGetChapterPublicationUrl = (id: string) => {
+  return `/api/cms/chapter-audio/${id}/publication`;
+};
+
+export const getChapterPublication = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ChapterPublication> => {
+  return customFetch<ChapterPublication>(getGetChapterPublicationUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetChapterPublicationQueryKey = (id: string) => {
+  return [`/api/cms/chapter-audio/${id}/publication`] as const;
+};
+
+export const getGetChapterPublicationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getChapterPublication>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChapterPublication>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetChapterPublicationQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getChapterPublication>>
+  > = ({ signal }) => getChapterPublication(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getChapterPublication>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetChapterPublicationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getChapterPublication>>
+>;
+export type GetChapterPublicationQueryError = ErrorType<unknown>;
+
+export function useGetChapterPublication<
+  TData = Awaited<ReturnType<typeof getChapterPublication>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChapterPublication>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetChapterPublicationQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getPrepareChapterPublicationUrl = (id: string) => {
+  return `/api/cms/chapter-audio/${id}/publication`;
+};
+
+export const prepareChapterPublication = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ChapterPublication> => {
+  return customFetch<ChapterPublication>(getPrepareChapterPublicationUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPrepareChapterPublicationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof prepareChapterPublication>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof prepareChapterPublication>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["prepareChapterPublication"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof prepareChapterPublication>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return prepareChapterPublication(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PrepareChapterPublicationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof prepareChapterPublication>>
+>;
+
+export type PrepareChapterPublicationMutationError = ErrorType<unknown>;
+
+export const usePrepareChapterPublication = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof prepareChapterPublication>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof prepareChapterPublication>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getPrepareChapterPublicationMutationOptions(options));
+};
+
+export const getDownloadChapterPublicationUrl = (id: string) => {
+  return `/api/cms/chapter-audio/${id}/publication/audio`;
+};
+
+export const downloadChapterPublication = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getDownloadChapterPublicationUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDownloadChapterPublicationQueryKey = (id: string) => {
+  return [`/api/cms/chapter-audio/${id}/publication/audio`] as const;
+};
+
+export const getDownloadChapterPublicationQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadChapterPublication>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadChapterPublication>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getDownloadChapterPublicationQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadChapterPublication>>
+  > = ({ signal }) =>
+    downloadChapterPublication(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadChapterPublication>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadChapterPublicationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadChapterPublication>>
+>;
+export type DownloadChapterPublicationQueryError = ErrorType<unknown>;
+
+export function useDownloadChapterPublication<
+  TData = Awaited<ReturnType<typeof downloadChapterPublication>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadChapterPublication>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadChapterPublicationQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getDownloadChapterAudioUrl = (
+  id: string,
+  params?: DownloadChapterAudioParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/chapter-audio/${id}/audio?${stringifiedParams}`
+    : `/api/cms/chapter-audio/${id}/audio`;
+};
+
+export const downloadChapterAudio = async (
+  id: string,
+  params?: DownloadChapterAudioParams,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getDownloadChapterAudioUrl(id, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDownloadChapterAudioQueryKey = (
+  id: string,
+  params?: DownloadChapterAudioParams,
+) => {
+  return [
+    `/api/cms/chapter-audio/${id}/audio`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getDownloadChapterAudioQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadChapterAudio>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  params?: DownloadChapterAudioParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadChapterAudio>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getDownloadChapterAudioQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadChapterAudio>>
+  > = ({ signal }) =>
+    downloadChapterAudio(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadChapterAudio>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadChapterAudioQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadChapterAudio>>
+>;
+export type DownloadChapterAudioQueryError = ErrorType<void>;
+
+export function useDownloadChapterAudio<
+  TData = Awaited<ReturnType<typeof downloadChapterAudio>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  params?: DownloadChapterAudioParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadChapterAudio>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadChapterAudioQueryOptions(id, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List visible booking calendars
+ */
+export const getListPublicBookingsUrl = () => {
+  return `/api/bookings`;
+};
+
+export const listPublicBookings = async (
+  options?: RequestInit,
+): Promise<ListPublicBookings200> => {
+  return customFetch<ListPublicBookings200>(getListPublicBookingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPublicBookingsQueryKey = () => {
+  return [`/api/bookings`] as const;
+};
+
+export const getListPublicBookingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPublicBookings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicBookings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPublicBookingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPublicBookings>>
+  > = ({ signal }) => listPublicBookings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicBookings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPublicBookingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPublicBookings>>
+>;
+export type ListPublicBookingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List visible booking calendars
+ */
+
+export function useListPublicBookings<
+  TData = Awaited<ReturnType<typeof listPublicBookings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicBookings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPublicBookingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a visible booking calendar
+ */
+export const getGetPublicBookingUrl = (slug: string) => {
+  return `/api/bookings/${slug}`;
+};
+
+export const getPublicBooking = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<BookingRecord> => {
+  return customFetch<BookingRecord>(getGetPublicBookingUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicBookingQueryKey = (slug: string) => {
+  return [`/api/bookings/${slug}`] as const;
+};
+
+export const getGetPublicBookingQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicBooking>>,
+  TError = ErrorType<void>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicBooking>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPublicBookingQueryKey(slug);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublicBooking>>
+  > = ({ signal }) => getPublicBooking(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicBooking>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicBookingQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicBooking>>
+>;
+export type GetPublicBookingQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a visible booking calendar
+ */
+
+export function useGetPublicBooking<
+  TData = Awaited<ReturnType<typeof getPublicBooking>>,
+  TError = ErrorType<void>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicBooking>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicBookingQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a booking calendar (admin authentication required)
+ */
+export const getCreateAdminBookingUrl = () => {
+  return `/api/admin/bookings`;
+};
+
+export const createAdminBooking = async (
+  bookingRecordInput: BookingRecordInput,
+  options?: RequestInit,
+): Promise<BookingRecord> => {
+  return customFetch<BookingRecord>(getCreateAdminBookingUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bookingRecordInput),
+  });
+};
+
+export const getCreateAdminBookingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminBooking>>,
+    TError,
+    { data: BodyType<BookingRecordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAdminBooking>>,
+  TError,
+  { data: BodyType<BookingRecordInput> },
+  TContext
+> => {
+  const mutationKey = ["createAdminBooking"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAdminBooking>>,
+    { data: BodyType<BookingRecordInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAdminBooking(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAdminBookingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAdminBooking>>
+>;
+export type CreateAdminBookingMutationBody = BodyType<BookingRecordInput>;
+export type CreateAdminBookingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a booking calendar (admin authentication required)
+ */
+export const useCreateAdminBooking = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminBooking>>,
+    TError,
+    { data: BodyType<BookingRecordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAdminBooking>>,
+  TError,
+  { data: BodyType<BookingRecordInput> },
+  TContext
+> => {
+  return useMutation(getCreateAdminBookingMutationOptions(options));
+};
+
+/**
+ * @summary Update a booking calendar (admin authentication required)
+ */
+export const getPatchAdminBookingUrl = (id: string) => {
+  return `/api/admin/bookings/${id}`;
+};
+
+export const patchAdminBooking = async (
+  id: string,
+  bookingRecordFields: BookingRecordFields,
+  options?: RequestInit,
+): Promise<BookingRecord> => {
+  return customFetch<BookingRecord>(getPatchAdminBookingUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bookingRecordFields),
+  });
+};
+
+export const getPatchAdminBookingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchAdminBooking>>,
+    TError,
+    { id: string; data: BodyType<BookingRecordFields> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchAdminBooking>>,
+  TError,
+  { id: string; data: BodyType<BookingRecordFields> },
+  TContext
+> => {
+  const mutationKey = ["patchAdminBooking"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchAdminBooking>>,
+    { id: string; data: BodyType<BookingRecordFields> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return patchAdminBooking(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchAdminBookingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchAdminBooking>>
+>;
+export type PatchAdminBookingMutationBody = BodyType<BookingRecordFields>;
+export type PatchAdminBookingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a booking calendar (admin authentication required)
+ */
+export const usePatchAdminBooking = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchAdminBooking>>,
+    TError,
+    { id: string; data: BodyType<BookingRecordFields> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchAdminBooking>>,
+  TError,
+  { id: string; data: BodyType<BookingRecordFields> },
+  TContext
+> => {
+  return useMutation(getPatchAdminBookingMutationOptions(options));
+};
 
 /**
  * @summary Health check
@@ -2781,41 +4248,144 @@ export function useExportAuditLogCsv<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-export const getListCmsUsersUrl = () => {
+/**
+ * @summary Prepare website access for an existing Entra user
+ */
+export const getProvisionEntraUserUrl = () => {
   return `/api/cms/users`;
 };
 
+export const provisionEntraUser = async (
+  entraUserInput: EntraUserInput,
+  options?: RequestInit,
+): Promise<CmsUser> => {
+  return customFetch<CmsUser>(getProvisionEntraUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(entraUserInput),
+  });
+};
+
+export const getProvisionEntraUserMutationOptions = <
+  TError = ErrorType<void | EntraUserConflict>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof provisionEntraUser>>,
+    TError,
+    { data: BodyType<EntraUserInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof provisionEntraUser>>,
+  TError,
+  { data: BodyType<EntraUserInput> },
+  TContext
+> => {
+  const mutationKey = ["provisionEntraUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof provisionEntraUser>>,
+    { data: BodyType<EntraUserInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return provisionEntraUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ProvisionEntraUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof provisionEntraUser>>
+>;
+export type ProvisionEntraUserMutationBody = BodyType<EntraUserInput>;
+export type ProvisionEntraUserMutationError =
+  ErrorType<void | EntraUserConflict>;
+
+/**
+ * @summary Prepare website access for an existing Entra user
+ */
+export const useProvisionEntraUser = <
+  TError = ErrorType<void | EntraUserConflict>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof provisionEntraUser>>,
+    TError,
+    { data: BodyType<EntraUserInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof provisionEntraUser>>,
+  TError,
+  { data: BodyType<EntraUserInput> },
+  TContext
+> => {
+  return useMutation(getProvisionEntraUserMutationOptions(options));
+};
+
+export const getListCmsUsersUrl = (params?: ListCmsUsersParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/users?${stringifiedParams}`
+    : `/api/cms/users`;
+};
+
 export const listCmsUsers = async (
+  params?: ListCmsUsersParams,
   options?: RequestInit,
 ): Promise<CmsUser[]> => {
-  return customFetch<CmsUser[]>(getListCmsUsersUrl(), {
+  return customFetch<CmsUser[]>(getListCmsUsersUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListCmsUsersQueryKey = () => {
-  return [`/api/cms/users`] as const;
+export const getListCmsUsersQueryKey = (params?: ListCmsUsersParams) => {
+  return [`/api/cms/users`, ...(params ? [params] : [])] as const;
 };
 
 export const getListCmsUsersQueryOptions = <
   TData = Awaited<ReturnType<typeof listCmsUsers>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listCmsUsers>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListCmsUsersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsUsers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListCmsUsersQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListCmsUsersQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listCmsUsers>>> = ({
     signal,
-  }) => listCmsUsers({ signal, ...requestOptions });
+  }) => listCmsUsers(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listCmsUsers>>,
@@ -2832,15 +4402,18 @@ export type ListCmsUsersQueryError = ErrorType<unknown>;
 export function useListCmsUsers<
   TData = Awaited<ReturnType<typeof listCmsUsers>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listCmsUsers>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListCmsUsersQueryOptions(options);
+>(
+  params?: ListCmsUsersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsUsers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsUsersQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

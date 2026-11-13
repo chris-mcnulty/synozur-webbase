@@ -14,6 +14,11 @@ import { logSecurityHeaderConfig } from "./lib/securityHeaders";
 import { logLaunchReadiness } from "./lib/launchReadiness";
 import { seedTestAdminIfConfigured } from "./lib/testAdminSeed";
 import { seedLandingPagesIfMissing } from "./lib/landingPagesSeed";
+import { seedEventSeoDescriptionsIfMissing } from "./lib/eventSeoDescriptionsSeed";
+import { seedWhitePaperAssignmentsIfMissing } from "./lib/whitePaperAssignmentsSeed";
+import { repairImportedVideoContent } from "./lib/videoContentSeed";
+import { initializeChapterAudio } from "./lib/chapterAudio/repository";
+import { startChapterAudioWorker } from "./lib/chapterAudio/worker";
 
 const rawPort = process.env["PORT"];
 
@@ -38,6 +43,15 @@ await ensureSigningKey();
 await ensureGalaxyOAuthClient();
 await seedTestAdminIfConfigured();
 await seedLandingPagesIfMissing();
+await seedEventSeoDescriptionsIfMissing();
+await seedWhitePaperAssignmentsIfMissing();
+await repairImportedVideoContent();
+try {
+  await initializeChapterAudio();
+} catch {
+  logger.warn("Chapter Audio initialization failed; the rest of the site will continue normally");
+}
+const chapterAudioWorker = startChapterAudioWorker();
 
 const server = app.listen(port, (err) => {
   if (err) {
@@ -71,6 +85,7 @@ function shutdown(signal: string) {
   worker.stop();
   retentionWorker.stop();
   briefingSubscriptionWorker.stop();
+  chapterAudioWorker.stop();
   stopHubspotWorker();
   clearInterval(sessionGc);
   server.close(() => process.exit(0));

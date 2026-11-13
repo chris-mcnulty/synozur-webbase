@@ -158,6 +158,7 @@ export function SynozurAppSwitcher({
   forceDark = false,
 }: SynozurAppSwitcherProps) {
   const [open, setOpen] = useState(false);
+  const [openDirection, setOpenDirection] = useState<"left" | "right">("right");
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -194,7 +195,15 @@ export function SynozurAppSwitcher({
     <div className="relative">
       <button
         ref={buttonRef}
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          if (!open && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            const spaceLeft = rect.left;
+            const spaceRight = window.innerWidth - rect.right;
+            setOpenDirection(spaceLeft > spaceRight ? "left" : "right");
+          }
+          setOpen(!open);
+        }}
         aria-expanded={open}
         aria-haspopup="true"
         aria-controls={open ? "synozur-app-menu" : undefined}
@@ -226,7 +235,7 @@ export function SynozurAppSwitcher({
           id="synozur-app-menu"
           role="menu"
           aria-label="Synozur Suite Applications"
-          className={`absolute top-full left-0 sm:left-auto sm:right-0 mt-2 w-[360px] max-w-[calc(100vw-1rem)] rounded-xl shadow-2xl border z-[100] overflow-hidden ${
+          className={`absolute top-full ${openDirection === "left" ? "right-0" : "left-0"} mt-2 w-[360px] max-w-[calc(100vw-1rem)] rounded-xl shadow-2xl border z-[100] overflow-hidden ${
             fd
               ? "bg-gray-950 border-white/10"
               : "bg-white dark:bg-gray-950 border-gray-200 dark:border-white/10"

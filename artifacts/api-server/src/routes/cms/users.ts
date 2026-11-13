@@ -1,4 +1,5 @@
-import { Router, type IRouter } from "express";
+import express, { Router, type IRouter } from "express";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import {
@@ -11,14 +12,49 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { audit } from "../../lib/audit";
+import { AvatarImageError, storeProfileAvatar } from "../../lib/profileAvatar";
+import { EntraProvisionError, provisionEntraUser } from "../../lib/provisionEntraUser";
+import { ListCmsUsersQueryParams } from "@workspace/api-zod";
 
 const ProfileBody = z.object({
   displayName: z.string().min(1).max(120).optional(),
   bio: z.string().max(500).nullable().optional(),
-  avatarUrl: z.string().url().nullable().optional(),
+  avatarUrl: z.union([
+    z.string().url(),
+    z.string().regex(/^\/api\/storage\/objects\/uploads\/[0-9a-f-]{36}$/),
+  ]).nullable().optional(),
 });
 
 const router: IRouter = Router();
+
+router.post(
+  "/cms/profile/avatar",
+  requireAuth,
+  rateLimit({
+    windowMs: 15 * 60_000, limit: 10,
+    keyGenerator: (req) => req.authedUser!.id,
+    standardHeaders: "draft-7", legacyHeaders: false,
+    message: { error: "Too many photo uploads. Please try again later." },
+  }),
+  express.raw({ type: "application/octet-stream", limit: "5mb" }),
+  async (req, res) => {
+    if (!Buffer.isBuffer(req.body)) {
+      res.status(400).json({ error: "Send a JPEG, PNG or WebP photo as application/octet-stream." });
+      return;
+    }
+    try {
+      const avatarUrl = await storeProfileAvatar(req.body, req.authedUser!.id);
+      res.status(201).json({ avatarUrl });
+    } catch (err) {
+      if (err instanceof AvatarImageError) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+      req.log.error({ err }, "SharePoint Embedded avatar upload failed");
+      res.status(503).json({ error: "The photo could not be uploaded to Microsoft SharePoint Embedded. Please try again." });
+    }
+  },
+);
 
 router.put(
   "/cms/profile",
@@ -58,11 +94,47 @@ router.put(
 
 const CONTENT_ROLES: RoleName[] = ["admin", "site_admin", "editor", "content_author", "author"];
 
+router.post(
+  "/cms/users",
+  requireAuth,
+  requireRole("admin", "site_admin"),
+  async (req, res) => {
+    if (req.authedUser!.authProvider === "api_key") {
+      res.status(403).json({ error: "A signed-in site administrator is required." });
+      return;
+    }
+    try {
+      const user = await provisionEntraUser(req.body);
+      await audit({
+        actorId: req.authedUser!.id, action: "user.provision_entra",
+        entity: "user", entityId: user.id, diff: { roles: user.roles },
+      });
+      res.status(201).json(user);
+    } catch (err) {
+      if (err instanceof EntraProvisionError) {
+        res.status(err.status).json({ error: err.message, ...(err.existingUserId ? { existingUserId: err.existingUserId } : {}) });
+        return;
+      }
+      throw err;
+    }
+  },
+);
+
 router.get(
   "/cms/users",
   requireAuth,
-  requireRole("admin", "editor"),
-  async (_req, res) => {
+  requireRole("admin", "site_admin", "editor"),
+  async (req, res) => {
+    const params = ListCmsUsersQueryParams.safeParse(req.query);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid user list scope." });
+      return;
+    }
+    const showAll = params.data.scope === "all";
+    if (showAll && !req.authedUser!.roles.some(role => role === "admin" || role === "site_admin")) {
+      res.status(403).json({ error: "Only administrators can list all website accounts." });
+      return;
+    }
     const users = await db.select().from(usersTable);
     const roleRows = await db
       .select({ userId: userRoles.userId, name: rolesTable.name })
@@ -75,6 +147,7 @@ router.get(
       rolesByUser.set(r.userId, arr);
     }
     const contentUsers = users.filter((u) => {
+      if (showAll) return true;
       const roles = rolesByUser.get(u.id) ?? [];
       return roles.some((r) => CONTENT_ROLES.includes(r));
     });
@@ -101,7 +174,7 @@ const RolesBody = z.object({
 router.put(
   "/cms/users/:id/roles",
   requireAuth,
-  requireRole("admin"),
+  requireRole("admin", "site_admin"),
   async (req, res) => {
     const parsed = RolesBody.safeParse(req.body);
     if (!parsed.success) {
@@ -121,13 +194,14 @@ router.put(
       .filter((r) => wantedNames.includes(r.name))
       .map((r) => r.id);
 
-    await db.delete(userRoles).where(eq(userRoles.userId, user.id));
-    if (wantedIds.length) {
-      await db
-        .insert(userRoles)
-        .values(wantedIds.map((roleId) => ({ userId: user.id, roleId })))
-        .onConflictDoNothing();
-    }
+    await db.transaction(async (tx) => {
+      await tx.delete(userRoles).where(eq(userRoles.userId, user.id));
+      if (wantedIds.length) {
+        await tx.insert(userRoles)
+          .values(wantedIds.map((roleId) => ({ userId: user.id, roleId, manuallyAssigned: true })))
+          .onConflictDoNothing();
+      }
+    });
 
     await audit({
       actorId: req.authedUser!.id,

@@ -1,0 +1,27 @@
+[
+  {
+    "slug": "historical-missing-image",
+    "sourceUrl": "https://example.com/insights/historical-missing-image",
+    "title": "Historical missing-image fixture",
+    "subtitle": null,
+    "excerpt": null,
+    "authorName": null,
+    "authorUrl": null,
+    "publishedAt": null,
+    "updatedAt": null,
+    "readingTimeMinutes": null,
+    "categories": [],
+    "tags": [],
+    "heroImage": {
+      "originalUrl": "https://example.com/original.png",
+      "localPath": "images/missing.png",
+      "bytes": 100
+    },
+    "bodyHtml": "<p>A preserved post with a deliberately missing hero.</p>",
+    "bodyMarkdown": "A preserved post with a deliberately missing hero.",
+    "bodyImages": [],
+    "seo": { "title": null, "description": null, "ogImage": null },
+    "status": "ok",
+    "notes": []
+  }
+]

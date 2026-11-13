@@ -1,3 +1,5 @@
+export * from "./chapterAudio";
+export * from "./chapterAudioCosts";
 export * from "./_artifactBase";
 export * from "./clientOrganizations";
 export * from "./clientOrganizationUsers";

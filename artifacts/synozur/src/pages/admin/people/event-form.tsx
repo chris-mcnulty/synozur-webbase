@@ -18,7 +18,9 @@ import {
   Upload,
   ExternalLink,
   Search,
+  AlertTriangle,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
 import { Button } from "@/components/ui/button";
@@ -117,6 +119,7 @@ function toLocalInput(iso: string | Date): string {
 export default function EventForm({ id }: Props) {
   const [, navigate] = useLocation();
   const qc = useQueryClient();
+  const { toast } = useToast();
   const isNew = !id;
   const eventId = id ? Number(id) : null;
 
@@ -149,9 +152,9 @@ export default function EventForm({ id }: Props) {
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
   const [sessionSaveStatus, setSessionSaveStatus] = useState<string | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
-  const formInitializedRef = useRef(false);
+  const [initializedEventId, setInitializedEventId] = useState<number | null>(null);
 
-  const { data: existing, isLoading } = useQuery({
+  const { data: existing, isLoading, error: loadError } = useQuery({
     queryKey: ["admin-event", eventId],
     queryFn: () => api.getEvent(eventId!),
     enabled: eventId != null,
@@ -159,8 +162,7 @@ export default function EventForm({ id }: Props) {
   });
 
   useEffect(() => {
-    if (existing && !formInitializedRef.current) {
-      formInitializedRef.current = true;
+    if (existing && existing.id === eventId && initializedEventId !== eventId) {
       setForm({
         title: existing.title,
         slug: existing.slug,
@@ -188,8 +190,9 @@ export default function EventForm({ id }: Props) {
         seoDescription: existing.seoDescription ?? null,
       });
       setImagePreview(existing.imageUrl ?? null);
+      setInitializedEventId(eventId);
     }
-  }, [existing]);
+  }, [existing, eventId, initializedEventId]);
 
   const scheduleQ = useQuery({
     queryKey: ["event-schedule-admin", existing?.slug],
@@ -341,6 +344,13 @@ export default function EventForm({ id }: Props) {
     onError: (e: Error) => setSyncStatus(`Sync failed: ${e.message}`),
   });
 
+  // Public event pages fall back seoDescription → teaser → description for
+  // the meta description; warn (non-blocking) when all three are blank.
+  const noMetaDesc =
+    !(form.seoDescription ?? "").trim() &&
+    !(form.teaser ?? "").trim() &&
+    !(form.description ?? "").trim();
+
   const title = isNew ? "Create Event" : "Edit Event";
   const crumbs = [
     { label: "Admin", href: "/" },
@@ -348,7 +358,16 @@ export default function EventForm({ id }: Props) {
     { label: title },
   ];
 
-  if (!isNew && isLoading) {
+  if (!isNew && loadError) {
+    return (
+      <AdminLayout title={title} crumbs={crumbs}>
+        <p role="alert" className="text-destructive">Could not load this event. Reload the page before editing; no changes have been saved.</p>
+      </AdminLayout>
+    );
+  }
+  // Do not mount form selects with new-event defaults while the saved event
+  // is waiting to hydrate. Mount-time select callbacks must not overwrite it.
+  if (!isNew && (isLoading || initializedEventId !== eventId)) {
     return (
       <AdminLayout title={title} crumbs={crumbs}>
         <div className="text-muted-foreground">Loading…</div>
@@ -384,10 +403,31 @@ export default function EventForm({ id }: Props) {
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
+          if (noMetaDesc) {
+            toast({
+              title: "Missing meta description",
+              description:
+                "This event has no SEO description, teaser, or description. Search engines will auto-generate a snippet — fill in at least one for better results.",
+            });
+          }
           saveMutation.mutate();
         }}
         className="space-y-6"
       >
+        {noMetaDesc && (
+          <div
+            className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+            data-testid="banner-no-meta-desc"
+          >
+            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div>
+              <span className="font-medium">No meta description.</span>{" "}
+              This event has neither an SEO description nor a teaser/description
+              to fall back on. Search engines will auto-generate a snippet.
+              Fill in at least one for best results.
+            </div>
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="title">Title *</Label>
           <Input
@@ -458,7 +498,7 @@ export default function EventForm({ id }: Props) {
           <Select
             value={form.timezone ?? "__unset__"}
             onValueChange={(v) =>
-              setForm((f) => ({ ...f, timezone: v === "__unset__" ? null : v }))
+              v && setForm((f) => ({ ...f, timezone: v === "__unset__" ? null : v }))
             }
           >
             <SelectTrigger id="timezone" data-testid="select-timezone">
@@ -509,7 +549,7 @@ export default function EventForm({ id }: Props) {
           <Label>Event Status</Label>
           <Select
             value={form.status || "UPCOMING"}
-            onValueChange={(v) => setForm({ ...form, status: v })}
+            onValueChange={(v) => { if (v) setForm((f) => ({ ...f, status: v })); }}
           >
             <SelectTrigger data-testid="select-status">
               <SelectValue />
@@ -551,7 +591,7 @@ export default function EventForm({ id }: Props) {
               <Label>Registration status</Label>
               <Select
                 value={form.registrationStatus || "UNKNOWN_REGISTRATION_STATUS"}
-                onValueChange={(v) => setForm({ ...form, registrationStatus: v })}
+                onValueChange={(v) => { if (v) setForm((f) => ({ ...f, registrationStatus: v })); }}
               >
                 <SelectTrigger data-testid="select-registrationStatus">
                   <SelectValue />
@@ -568,7 +608,7 @@ export default function EventForm({ id }: Props) {
               <Label>Event type</Label>
               <Select
                 value={form.eventType ?? "RSVP"}
-                onValueChange={(v) => setForm({ ...form, eventType: v })}
+                onValueChange={(v) => { if (v) setForm((f) => ({ ...f, eventType: v })); }}
               >
                 <SelectTrigger data-testid="select-eventType">
                   <SelectValue />
@@ -656,7 +696,7 @@ export default function EventForm({ id }: Props) {
               <Select
                 value={form.recordingVideoId ?? "__none__"}
                 onValueChange={(v) =>
-                  setForm({ ...form, recordingVideoId: v === "__none__" ? null : v })
+                  v && setForm((f) => ({ ...f, recordingVideoId: v === "__none__" ? null : v }))
                 }
               >
                 <SelectTrigger data-testid="select-recordingVideo">

@@ -100,6 +100,25 @@ export interface AttributionPayload {
   utmContent?: string;
   landingPage?: string;
   referrer?: string;
+  // #549 — HubSpot tracking cookie. Set by the hs-script-loader pixel when
+  // tracking is active; forwarded with every form submission so the server
+  // can stitch the pre-form anonymous session to the resulting contact.
+  hubspotutk?: string;
+}
+
+// Read a cookie value by name from `document.cookie`. Returns null when the
+// cookie is absent or when called in a non-browser environment.
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${name}=`;
+  for (const part of document.cookie.split(";")) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(prefix)) {
+      const value = trimmed.slice(prefix.length);
+      return value.length > 0 ? value : null;
+    }
+  }
+  return null;
 }
 
 export function attributionPayload(): AttributionPayload {
@@ -122,5 +141,10 @@ export function attributionPayload(): AttributionPayload {
   const ct = pick("utmContent"); if (ct) out.utmContent = ct;
   const lp = pick("landingPage"); if (lp) out.landingPage = lp;
   const r = pick("referrer"); if (r) out.referrer = r;
+  // #549 — Forward the HubSpot tracking cookie so the server can stitch
+  // the visitor's pre-form session to the HubSpot contact via the Forms API.
+  // The cookie is set by the hs-script-loader pixel loaded in analytics.tsx.
+  const hutk = readCookie("hubspotutk");
+  if (hutk) out.hubspotutk = hutk;
   return out;
 }

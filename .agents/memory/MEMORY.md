@@ -1,3 +1,5 @@
+- [Git sync and upload policy](git-sync-and-upload-policy.md) — uploads never go to GitHub; original recovery histories stay local, and older task merges need outgoing-history checks.
+- [Chapter audio requirements](chapter-audio-requirements.md) — confirmed access, Dragon HD voices, shared private history, English-first scope, and 30-day retention.
 - [Edit-wedge image snapshot fields](edit-wedge-image-snapshot.md) — public detail payloads carry image URLs but not image IDs; wedge display must key off URL, PATCH off ID.
 - [North Star Method phases](north-star-method-phases.md) — canonical phase names; live site + Galaxy are source of truth over the MPF proposal.
 - [OG image sizing](og-image-sizing.md) — og:image must be a resized same-origin JPEG (?w=1200&fmt=jpeg) via the storage route; WebP stays the in-page default; don't touch siteOrigin().
@@ -21,3 +23,6 @@
 - [SEO audit OG-image findings](seo-audit-og-findings.md) — ogImage=autofillable promote; og_image_missing=pure warning; kinds with no image field must strip both to avoid permanent noise.
 - [Graph Bookings staff assignment](graph-bookings-staff-assignment.md) — Graph-created appointments are unassigned (no staff invite) unless staffMemberIds is sent; resolve free staff at booking time.
 - [Event PATCH full-body overwrite](event-patch-full-body-overwrite.md) — events PATCH wiped omitted registration fields; now preserves stored values, explicit UNKNOWN still clears.
+- [Binary upload contracts](binary-upload-contracts.md) — named binary schema refs make Orval emit browser Blob types into the Node-only validation package; use inline binary schemas.
+- [Entra access provisioning](entra-access-provisioning.md) — preassigned privileges bind to tenant/object identity; explicit administrator assignments survive group syncing.
+- [HubSpot timeline eligibility](hubspot-timeline-eligibility.md) — an App ID alone is insufficient; verify existing public-app event types and app-bound authentication.

@@ -142,9 +142,11 @@ const WorkshopBody = z.object({
   bookingId: z.string().uuid().nullish(),
 });
 type WorkshopBodyT = z.infer<typeof WorkshopBody>;
-const WorkshopPatch = WorkshopBody.partial().extend({
+export const WorkshopPatch = WorkshopBody.partial().extend({
   primaryCTA: CtaSchema.partial().optional(),
-  secondaryCTA: CtaSchema.partial().optional(),
+  // The editor serializes an empty optional CTA as null. Keep PATCH aligned
+  // with the create schema so a workshop can be saved without a secondary CTA.
+  secondaryCTA: CtaSchema.partial().nullish(),
   pain: PainSchema.partial().optional(),
   scope: ScopeSchema.partial().optional(),
   process: ProcessSchema.partial().optional(),

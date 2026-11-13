@@ -58,6 +58,10 @@ export const clientOrganizationsTable = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // HubSpot CRM Company ID for the matching Company object. Set by the
+    // hubspot sync worker after a successful company.upsert; NULL means the
+    // org has not yet been synced (or HubSpot is not configured).
+    hubspotCompanyId: text("hubspot_company_id"),
     // Soft-delete marker. Active orgs have NULL; deleted orgs are filtered
     // out of the portal but the row is preserved for engagement history.
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

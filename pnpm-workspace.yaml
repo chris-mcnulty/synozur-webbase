@@ -39,6 +39,7 @@ minimumReleaseAgeExclude:
 onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
+  - ffmpeg-static
   - msw
   - sharp
   - unrs-resolver

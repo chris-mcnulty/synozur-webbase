@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import type { CurrentUser } from "@workspace/api-client-react";
 import { capabilitiesFromServer, computeCapabilities, type Capability } from "@/lib/capabilities";
 import { useAuth } from "@/context/auth";
@@ -34,14 +34,27 @@ export function useAdminAccess(): {
   const { isLoaded, isSignedIn, user } = useAuth();
 
   const { data: adminMe, isLoading: adminLoading } = useQuery({
-    queryKey: ["admin-me"],
-    queryFn: () => api.me(),
+    queryKey: ["admin-me", user?.id],
+    queryFn: async () => {
+      try { return await api.me(); }
+      catch (error) {
+        // A CMS editor need not be on the administrator allow-list. Treat the
+        // expected denial as data; otherwise nested access hooks remount and
+        // re-fetch the failed query, unmounting the layout in a loading loop.
+        if (error instanceof ApiError && error.status === 403) {
+          return { userId: user?.id ?? "", email: user?.email ?? "", authorized: false };
+        }
+        throw error;
+      }
+    },
     enabled: isLoaded && isSignedIn,
     retry: false,
+    retryOnMount: false,
+    staleTime: 30_000,
   });
 
   const { data: cmsUser, isLoading: cmsLoading } = useQuery<CurrentUserWithCapabilities | null>({
-    queryKey: ["cms-me"],
+    queryKey: ["cms-me", user?.id],
     queryFn: async () => {
       try {
         const res = await fetch(`${BASE_PATH}/api/auth/me`, { credentials: "include" });
