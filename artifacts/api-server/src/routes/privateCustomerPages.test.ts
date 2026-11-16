@@ -54,7 +54,7 @@ test("private page and shared-account HTTP security lifecycle", async (t) => {
   let pageId = "", accountId = "", accountUserId = "";
   let password = "", cookie1 = "", cookie2 = "";
   const login = async (pass: string) => {
-    const r = await write("/api/auth/shared/login", { username: `synthetic-${orgA}@example.invalid`, password: pass }, "");
+    const r = await write("/api/auth/galaxy/login", { username: `synthetic-${orgA}@example.invalid`, password: pass }, "");
     return { response: r, cookie: r.headers.get("set-cookie")?.split(";")[0] ?? "" };
   };
   const sharedGet = (path: string, cookie = cookie1) => request(path, undefined, { headers: { Cookie: cookie } });

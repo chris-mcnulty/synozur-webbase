@@ -162,8 +162,8 @@ export default function PrivatePageDetail({ id }: { id: string }) {
   return (
     <div className="h-[100dvh] overflow-hidden flex flex-col bg-background">
       <header className="shrink-0 h-11 flex items-center gap-3 px-3 border-b border-border/70 bg-card/80 backdrop-blur text-sm">
-        <Link href="/pages" aria-label="Back to private pages" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground shrink-0">
-          <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Private pages</span>
+        <Link href={isShared ? "/pages" : "/"} aria-label="Back to Galaxy" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground shrink-0">
+          <ArrowLeft className="h-4 w-4" /> <span>Back to Galaxy</span>
         </Link>
         <span className="h-4 w-px bg-border shrink-0" />
         <span className="truncate font-medium min-w-0 flex-1">{page?.title ?? ""}</span>

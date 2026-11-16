@@ -4419,6 +4419,24 @@ export type NotFoundResponse = ErrorEnvelope;
  */
 export type BadRequestResponse = ErrorEnvelope;
 
+export type LoginGalaxyBody = {
+  username: string;
+  password: string;
+};
+
+export type LoginGalaxy200AccountType =
+  (typeof LoginGalaxy200AccountType)[keyof typeof LoginGalaxy200AccountType];
+
+export const LoginGalaxy200AccountType = {
+  shared: "shared",
+  individual: "individual",
+} as const;
+
+export type LoginGalaxy200 = {
+  ok: boolean;
+  accountType: LoginGalaxy200AccountType;
+};
+
 export type GetPortalCeoMessage200 = {
   item: PortalMessageInput | null;
 };

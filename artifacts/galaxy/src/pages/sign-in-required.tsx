@@ -53,17 +53,17 @@ export default function SignInRequired() {
             <h1 className="text-2xl font-semibold">{showManual ? "Sign in to Galaxy" : "Signing you in…"}</h1>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            {showManual ? "Sign in to open this private content. Use your individual Synozur account, or enter the shared organization credentials below." : "Redirecting to sign in with your Synozur account."}
+            {showManual ? "Enter your email or username and password to continue." : "Redirecting to sign in with your Synozur account."}
           </p>
+          {showManual && <SharedSignInForm />}
           {showManual && (
             <Button
               onClick={() => signIn(window.location.pathname + window.location.search)}
-              className="w-full"
+              className="w-full" variant="outline"
             >
-              Sign in with your Synozur account
+              Continue with Microsoft / Synozur SSO
             </Button>
           )}
-          {showManual && <SharedSignInForm />}
         </Card>
       </main>
       <PortalSiteFooter />

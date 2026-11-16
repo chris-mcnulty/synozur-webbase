@@ -42,7 +42,7 @@ export function sharedRequestAllowed(method: string, path: string): boolean {
       /^\/api\/private-pages(?:\/[0-9a-f-]+(?:\/(?:html|script|assets\/(?:html|audio|transcript)))?)?\/?$/i.test(path);
   }
   return method === "POST" &&
-    ["/api/auth/shared/logout", "/api/auth/shared/login"].includes(path);
+    ["/api/auth/shared/logout", "/api/auth/shared/login", "/api/auth/galaxy/login"].includes(path);
 }
 
 /**
@@ -81,7 +81,7 @@ export const attachSharedAccess: RequestHandler = async (req, res, next) => {
     // Never fall back to a native sid and silently enter a different identity.
     delete req.authedUser;
     delete req.session;
-    if (req.path === "/api/auth/shared/session" || req.path === "/api/auth/shared/login" ||
+    if (req.path === "/api/auth/shared/session" || req.path === "/api/auth/shared/login" || req.path === "/api/auth/galaxy/login" ||
         req.path === "/api/auth/shared/logout") { next(); return; }
     res.status(401).json({ error: "Unauthorized" });
     return;

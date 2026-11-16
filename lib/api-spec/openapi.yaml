@@ -68,6 +68,30 @@ tags:
   - name: CmsApiKeys
     description: Admin API key management for machine-to-machine access.
 paths:
+  /auth/galaxy/login:
+    post:
+      operationId: loginGalaxy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: Signed in with the appropriate account session
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, accountType]
+                properties:
+                  ok: { type: boolean }
+                  accountType: { type: string, enum: [shared, individual] }
   /admin/portal-message:
     get:
       operationId: getAdminPortalMessage

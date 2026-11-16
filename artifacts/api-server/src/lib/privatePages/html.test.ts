@@ -52,6 +52,13 @@ test("file validation rejects bad extensions, types and empty payloads", () => {
   assert.throws(() => validatePrivateFile("html", "../secret.html", Buffer.from("<p>hi</p>")));
   assert.throws(() => validatePrivateFile("html", "empty.html", Buffer.alloc(0)));
 });
+test("section links scroll inside srcdoc without navigating the iframe", () => {
+  const { html, requiresAudio } = preparePrivateHtml('<a href="#plan">See the plan</a><section id="plan">Plan</section>');
+  assert.match(html, /href="#plan"/);
+  assert.match(html, /document.getElementById\(href.slice\(1\)\)/);
+  assert.match(html, /target.scrollIntoView/);
+  assert.equal(requiresAudio, false);
+});
 test("shared sessions have a narrow server-side allowlist", () => {
   assert.equal(sharedRequestAllowed("GET", "/api/private-pages"), true);
   assert.equal(sharedRequestAllowed("POST", "/api/auth/shared/logout"), true);

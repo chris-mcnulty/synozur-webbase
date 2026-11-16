@@ -29,6 +29,12 @@ Do not treat an opaque-origin iframe plus restrictive fetch CSP as proof of comp
 
 Shared access intentionally uses dedicated short-lived server-side cookies, not Galaxy OAuth access/refresh tokens. Email-shaped usernames are labels, not verified email identities.
 
+The Galaxy credential form must accept individual and shared accounts in the same fields without asking visitors to select an account type.
+
+**Why:** The user explicitly rejected separate login dialogs after shared credentials repeatedly reached individual sign-in.
+
+**How to apply:** Resolve the account type on the server while preserving separate session scopes and shared-account restrictions; a unified form does not authorize unified privileges.
+
 **Why:** Shared credentials must never become cross-application SSO credentials. Live session/account checks make revocation immediate while ordinary individual OAuth remains unchanged.
 
 **How to apply:** Keep shared identities out of the ordinary identity loader and OAuth/recovery/linking flows. Do not add bearer issuance as a convenience without revisiting the entire audience and revocation boundary.
@@ -40,6 +46,12 @@ Confidential HTML allows only explicitly vetted script hashes; arbitrary uploade
 **How to apply:** Review new interaction scripts before approving their hashes; preserve safe static SVG shapes, embedded raster images and local interactions. Attachment playback uses a parent-fetched Blob passed into the sandbox rather than authenticated iframe requests or bearer links.
 
 Private proposal HTML is the primary reading experience, not a small embedded panel below Galaxy navigation. Keep audio and script controls compact inside the proposal and avoid a full transcript outside it or nested scrolling.
+
+Most private HTML pages will not have audio; the MassHousing proposal is an exception.
+
+**Why:** The user explicitly clarified that audio is optional, not the default page experience.
+
+**How to apply:** Show media controls only for available attachments and keep navigation usable without any media.
 
 **Why:** The user rejected the crowded preview and explicitly requested more screen space with attachment links inside the page.
 

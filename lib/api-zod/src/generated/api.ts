@@ -7,6 +7,16 @@
  */
 import * as zod from "zod";
 
+export const LoginGalaxyBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+});
+
+export const LoginGalaxyResponse = zod.object({
+  ok: zod.boolean(),
+  accountType: zod.enum(["shared", "individual"]),
+});
+
 export const getAdminPortalMessageResponseMessageMax = 10000;
 
 export const getAdminPortalMessageResponseSignatureMax = 200;

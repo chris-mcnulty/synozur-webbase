@@ -152,7 +152,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try { sessionStorage.setItem(SHARED_SIGNOUT_FLAG, "1"); } catch { /* ignore */ }
       return;
     }
+    try {
+      const response = await fetch("/api/auth/sign-out", { method: "POST", credentials: "include" });
+      if (!response.ok) throw new Error("Sign-out failed");
+    } catch {
+      window.alert("Could not sign out securely. Check your connection and try again.");
+      return;
+    }
     getOauthClient().clearTokens();
+    queryClient.clear();
     setUser(null);
     const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
     window.location.assign(`${base}/`);

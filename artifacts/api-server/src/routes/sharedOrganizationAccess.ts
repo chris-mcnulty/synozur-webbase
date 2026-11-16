@@ -5,6 +5,7 @@ import { pool } from "@workspace/db";
 import { z } from "zod";
 import { CreateSharedOrganizationAccountBody, RotateSharedOrganizationAccountBody } from "@workspace/api-zod";
 import { audit } from "../lib/audit";
+import individualAuthRouter from "./auth";
 import { activeOrg, requirePrivateStaff, uuid } from "../lib/privatePages/access";
 import {
   confidentialHeaders, digest, generateSharedPassword, privateWriteGuard,
@@ -20,6 +21,32 @@ const passwordBody = RotateSharedOrganizationAccountBody.extend({ password: chos
 // Same work factor for unknown users; generated in memory, never a credential.
 const dummyHash = bcrypt.hashSync(randomBytes(24).toString("base64url"), 12);
 const prefix = "/admin/private-pages/:orgId/accounts";
+
+// One credential form; account lookup stays server-side. Shared identities
+// retain their own cookie, limits and restricted authorization.
+router.post("/auth/galaxy/login", confidentialHeaders, privateWriteGuard, async (req, res, next) => {
+  const parsed = credentials.safeParse(req.body);
+  if (!parsed.success) { res.status(401).json({ error: "Invalid username or password." }); return; }
+  const result = await pool.query("SELECT id FROM shared_organization_accounts WHERE username=$1", [parsed.data.username]);
+  const originalUrl = req.url;
+  const shared = result.rowCount !== 0;
+  req.url = shared ? "/auth/shared/login" : "/auth/login";
+  req.body = shared ? parsed.data : { email: parsed.data.username, password: parsed.data.password };
+  const target = shared ? router : individualAuthRouter;
+  const json = res.json.bind(res);
+  res.json = (body: unknown) => {
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      if (!shared) setSharedCookie(req, res, null);
+      return json({ ok: true, accountType: shared ? "shared" : "individual" });
+    }
+    if (res.statusCode === 401 || res.statusCode === 400) {
+      res.status(401);
+      return json({ error: "Invalid email, username or password." });
+    }
+    return json(body);
+  };
+  target(req, res, (error?: unknown) => { req.url = originalUrl; next(error); });
+});
 
 router.use("/auth/shared", confidentialHeaders);
 router.use("/admin/private-pages", confidentialHeaders);

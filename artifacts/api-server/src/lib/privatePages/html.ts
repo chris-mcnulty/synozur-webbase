@@ -37,16 +37,30 @@ window.addEventListener("message", function(e){
  if(controls.childNodes.length)document.body.prepend(controls);
 });
 document.addEventListener("click",function(e){
- const a=e.target instanceof Element?e.target.closest("[data-private-attachment]"):null;
+ const a=e.target instanceof Element?e.target.closest("a"):null;
  if(!a)return;
- e.preventDefault();
  const kind=a.getAttribute("data-private-attachment");
+ const href=a.getAttribute("href");
+ // srcdoc inherits the parent's URL: native fragment navigation would load
+ // the portal inside this sandbox instead of scrolling this document.
+ if(!kind && href && href.charAt(0)==="#"){
+  e.preventDefault();
+  const target=document.getElementById(href.slice(1));
+  if(target){
+   target.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+   if(!target.hasAttribute("tabindex"))target.setAttribute("tabindex","-1");
+   target.focus({preventScroll:true});
+  }
+  return;
+ }
+ if(!kind)return;
+ e.preventDefault();
  if(kind==="transcript")parent.postMessage({type:"private-page-download",kind:"transcript"},"*");
  else if(kind==="audio"){
   const d=document.getElementById("private-proposal-listen");
   if(d){d.open=true;d.scrollIntoView({behavior:"smooth",block:"nearest"});}
  }
-});
+},true);
 })();`;
 
 export function privateHtmlCsp(scriptHashes: string[]) {

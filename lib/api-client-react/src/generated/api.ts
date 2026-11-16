@@ -140,6 +140,8 @@ import type {
   ListPublicBookings200,
   ListSharedOrganizationAccounts200,
   ListSolutionsParams,
+  LoginGalaxy200,
+  LoginGalaxyBody,
   MediaItem,
   MediaListResponse,
   Methodology,
@@ -246,6 +248,86 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getLoginGalaxyUrl = () => {
+  return `/api/auth/galaxy/login`;
+};
+
+export const loginGalaxy = async (
+  loginGalaxyBody: LoginGalaxyBody,
+  options?: RequestInit,
+): Promise<LoginGalaxy200> => {
+  return customFetch<LoginGalaxy200>(getLoginGalaxyUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(loginGalaxyBody),
+  });
+};
+
+export const getLoginGalaxyMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginGalaxy>>,
+    TError,
+    { data: BodyType<LoginGalaxyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof loginGalaxy>>,
+  TError,
+  { data: BodyType<LoginGalaxyBody> },
+  TContext
+> => {
+  const mutationKey = ["loginGalaxy"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof loginGalaxy>>,
+    { data: BodyType<LoginGalaxyBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return loginGalaxy(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LoginGalaxyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof loginGalaxy>>
+>;
+export type LoginGalaxyMutationBody = BodyType<LoginGalaxyBody>;
+export type LoginGalaxyMutationError = ErrorType<unknown>;
+
+export const useLoginGalaxy = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginGalaxy>>,
+    TError,
+    { data: BodyType<LoginGalaxyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof loginGalaxy>>,
+  TError,
+  { data: BodyType<LoginGalaxyBody> },
+  TContext
+> => {
+  return useMutation(getLoginGalaxyMutationOptions(options));
+};
 
 export const getGetAdminPortalMessageUrl = () => {
   return `/api/admin/portal-message`;
