@@ -105,6 +105,7 @@ import type {
   GetCmsPostAnalyticsParams,
   GetEventSchedule200,
   GetExperimentResultsResponse,
+  GetPortalCeoMessage200,
   GetPrivateCustomerHtmlParams,
   GetPrivateCustomerNarration200,
   GetPrivateCustomerNarrationParams,
@@ -160,6 +161,7 @@ import type {
   PortalDocumentVersionList,
   PortalForbidden,
   PortalMe,
+  PortalMessageInput,
   PortalSourceApp,
   Post,
   PostAnalytics,
@@ -244,6 +246,222 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getGetAdminPortalMessageUrl = () => {
+  return `/api/admin/portal-message`;
+};
+
+export const getAdminPortalMessage = async (
+  options?: RequestInit,
+): Promise<PortalMessageInput> => {
+  return customFetch<PortalMessageInput>(getGetAdminPortalMessageUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminPortalMessageQueryKey = () => {
+  return [`/api/admin/portal-message`] as const;
+};
+
+export const getGetAdminPortalMessageQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminPortalMessage>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPortalMessage>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminPortalMessageQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminPortalMessage>>
+  > = ({ signal }) => getAdminPortalMessage({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPortalMessage>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminPortalMessageQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminPortalMessage>>
+>;
+export type GetAdminPortalMessageQueryError = ErrorType<unknown>;
+
+export function useGetAdminPortalMessage<
+  TData = Awaited<ReturnType<typeof getAdminPortalMessage>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPortalMessage>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminPortalMessageQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSaveAdminPortalMessageUrl = () => {
+  return `/api/admin/portal-message`;
+};
+
+export const saveAdminPortalMessage = async (
+  portalMessageInput: PortalMessageInput,
+  options?: RequestInit,
+): Promise<PortalMessageInput> => {
+  return customFetch<PortalMessageInput>(getSaveAdminPortalMessageUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(portalMessageInput),
+  });
+};
+
+export const getSaveAdminPortalMessageMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveAdminPortalMessage>>,
+    TError,
+    { data: BodyType<PortalMessageInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveAdminPortalMessage>>,
+  TError,
+  { data: BodyType<PortalMessageInput> },
+  TContext
+> => {
+  const mutationKey = ["saveAdminPortalMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveAdminPortalMessage>>,
+    { data: BodyType<PortalMessageInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveAdminPortalMessage(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveAdminPortalMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveAdminPortalMessage>>
+>;
+export type SaveAdminPortalMessageMutationBody = BodyType<PortalMessageInput>;
+export type SaveAdminPortalMessageMutationError = ErrorType<unknown>;
+
+export const useSaveAdminPortalMessage = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveAdminPortalMessage>>,
+    TError,
+    { data: BodyType<PortalMessageInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveAdminPortalMessage>>,
+  TError,
+  { data: BodyType<PortalMessageInput> },
+  TContext
+> => {
+  return useMutation(getSaveAdminPortalMessageMutationOptions(options));
+};
+
+export const getGetPortalCeoMessageUrl = () => {
+  return `/api/portal/ceo-message`;
+};
+
+export const getPortalCeoMessage = async (
+  options?: RequestInit,
+): Promise<GetPortalCeoMessage200> => {
+  return customFetch<GetPortalCeoMessage200>(getGetPortalCeoMessageUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPortalCeoMessageQueryKey = () => {
+  return [`/api/portal/ceo-message`] as const;
+};
+
+export const getGetPortalCeoMessageQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPortalCeoMessage>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPortalCeoMessage>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPortalCeoMessageQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPortalCeoMessage>>
+  > = ({ signal }) => getPortalCeoMessage({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPortalCeoMessage>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPortalCeoMessageQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPortalCeoMessage>>
+>;
+export type GetPortalCeoMessageQueryError = ErrorType<unknown>;
+
+export function useGetPortalCeoMessage<
+  TData = Awaited<ReturnType<typeof getPortalCeoMessage>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPortalCeoMessage>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPortalCeoMessageQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getListPrivateCustomerPagesUrl = () => {
   return `/api/private-pages`;

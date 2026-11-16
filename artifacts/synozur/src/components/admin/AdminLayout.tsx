@@ -217,6 +217,7 @@ const SECTIONS: NavSection[] = [
     icon: PanelTop,
     items: [
       { href: "/site-config/site-settings", label: "Settings", icon: Settings, capability: "site.manage", testId: "nav-admin-site-settings" },
+      { href: "/site-config/portal-message", label: "Galaxy CEO Message", icon: FileText, capability: "site.manage", testId: "nav-admin-portal-message" },
       { href: "/site-config/alt-home", label: "Alt Home", icon: LayoutTemplate, capability: "site.manage", testId: "nav-admin-alt-home" },
       { href: "/site-config/experiments", label: "Experiments", icon: FlaskConical, capability: "site.manage", testId: "nav-admin-experiments" },
       { href: "/site-config/list-page-copy", label: "List Page Copy", icon: FileText, capability: "site.manage", testId: "nav-admin-list-page-copy" },

@@ -68,6 +68,44 @@ tags:
   - name: CmsApiKeys
     description: Admin API key management for machine-to-machine access.
 paths:
+  /admin/portal-message:
+    get:
+      operationId: getAdminPortalMessage
+      responses:
+        "200":
+          description: CEO message settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalMessageInput" }
+    put:
+      operationId: saveAdminPortalMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PortalMessageInput" }
+      responses:
+        "200":
+          description: Saved message settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalMessageInput" }
+  /portal/ceo-message:
+    get:
+      operationId: getPortalCeoMessage
+      responses:
+        "200":
+          description: Visible CEO message or null
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [item]
+                properties:
+                  item:
+                    anyOf:
+                      - { $ref: "#/components/schemas/PortalMessageInput" }
+                      - { type: "null" }
   /private-pages:
     get:
       operationId: listPrivateCustomerPages
@@ -5287,6 +5325,14 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    PortalMessageInput:
+      type: object
+      required: [message, signature, quarterLabel, visible]
+      properties:
+        message: { type: string, maxLength: 10000 }
+        signature: { type: string, maxLength: 200 }
+        quarterLabel: { type: string, maxLength: 80 }
+        visible: { type: boolean }
     PrivateCustomerPage:
       type: object
       required: [id, organizationId, title, slug, status, revision, reviewedRevision, assets]

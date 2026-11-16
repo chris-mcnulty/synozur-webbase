@@ -7,6 +7,67 @@
  */
 import * as zod from "zod";
 
+export const getAdminPortalMessageResponseMessageMax = 10000;
+
+export const getAdminPortalMessageResponseSignatureMax = 200;
+
+export const getAdminPortalMessageResponseQuarterLabelMax = 80;
+
+export const GetAdminPortalMessageResponse = zod.object({
+  message: zod.string().max(getAdminPortalMessageResponseMessageMax),
+  signature: zod.string().max(getAdminPortalMessageResponseSignatureMax),
+  quarterLabel: zod.string().max(getAdminPortalMessageResponseQuarterLabelMax),
+  visible: zod.boolean(),
+});
+
+export const saveAdminPortalMessageBodyMessageMax = 10000;
+
+export const saveAdminPortalMessageBodySignatureMax = 200;
+
+export const saveAdminPortalMessageBodyQuarterLabelMax = 80;
+
+export const SaveAdminPortalMessageBody = zod.object({
+  message: zod.string().max(saveAdminPortalMessageBodyMessageMax),
+  signature: zod.string().max(saveAdminPortalMessageBodySignatureMax),
+  quarterLabel: zod.string().max(saveAdminPortalMessageBodyQuarterLabelMax),
+  visible: zod.boolean(),
+});
+
+export const saveAdminPortalMessageResponseMessageMax = 10000;
+
+export const saveAdminPortalMessageResponseSignatureMax = 200;
+
+export const saveAdminPortalMessageResponseQuarterLabelMax = 80;
+
+export const SaveAdminPortalMessageResponse = zod.object({
+  message: zod.string().max(saveAdminPortalMessageResponseMessageMax),
+  signature: zod.string().max(saveAdminPortalMessageResponseSignatureMax),
+  quarterLabel: zod.string().max(saveAdminPortalMessageResponseQuarterLabelMax),
+  visible: zod.boolean(),
+});
+
+export const getPortalCeoMessageResponseItemOneMessageMax = 10000;
+
+export const getPortalCeoMessageResponseItemOneSignatureMax = 200;
+
+export const getPortalCeoMessageResponseItemOneQuarterLabelMax = 80;
+
+export const GetPortalCeoMessageResponse = zod.object({
+  item: zod.union([
+    zod.object({
+      message: zod.string().max(getPortalCeoMessageResponseItemOneMessageMax),
+      signature: zod
+        .string()
+        .max(getPortalCeoMessageResponseItemOneSignatureMax),
+      quarterLabel: zod
+        .string()
+        .max(getPortalCeoMessageResponseItemOneQuarterLabelMax),
+      visible: zod.boolean(),
+    }),
+    zod.null(),
+  ]),
+});
+
 export const ListPrivateCustomerPagesResponse = zod.object({
   items: zod.array(
     zod.object({

@@ -1,5 +1,6 @@
 import {
   useGetPortalMe,
+  useGetPortalCeoMessage,
   useListPortalEngagements,
   type PortalAccountTeamMember,
   type PortalEngagement,
@@ -30,12 +31,6 @@ function initials(name: string | null | undefined, fallback: string): string {
   if (parts.length === 0) return fallback;
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
-
-function currentQuarter(): string {
-  const now = new Date();
-  const q = Math.floor(now.getMonth() / 3) + 1;
-  return `Q${q} ${now.getFullYear()}`;
 }
 
 const ROLE_LABEL: Record<PortalAccountTeamMember["role"], string> = {
@@ -122,10 +117,15 @@ function EngagementCard({ engagement }: { engagement: PortalEngagement }) {
   );
 }
 
-// Placeholder for the CEO's recurring quarterly note. Wired as static copy
-// today; the intent is for this slot to be backed by a small CMS field that
-// the CEO updates each quarter.
 function CeoMessageCard() {
+  const { user } = useAuth();
+  const query = useGetPortalCeoMessage({ query: {
+    queryKey: ["portal-ceo-message", user?.id], staleTime: 0, gcTime: 0,
+    refetchInterval: 30_000, refetchOnWindowFocus: true,
+  } });
+  if (query.isError) return <Card className="p-4 text-sm"><p>The CEO message could not be loaded.</p><button className="underline" onClick={() => void query.refetch()}>Retry</button></Card>;
+  const message = query.data?.item;
+  if (!message) return null;
   return (
     <Card className="overflow-hidden border-violet-500/30 bg-gradient-to-br from-violet-500/10 via-card to-card">
       <CardContent className="p-6 space-y-4">
@@ -134,17 +134,14 @@ function CeoMessageCard() {
             <Quote className="h-3.5 w-3.5" />
             <span>A note from the CEO</span>
           </div>
-          <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-            {currentQuarter()}
-          </Badge>
+          {message.quarterLabel && <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+            {message.quarterLabel}
+          </Badge>}
         </div>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          A quarterly message from Synozur leadership will appear here — what
-          we're seeing across our clients, where we're investing, and how the
-          journey ahead is shaping up. Update this slot each quarter from the
-          admin console.
+        <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
+          {message.message}
         </p>
-        <p className="text-xs text-muted-foreground">— The Synozur Alliance</p>
+        {message.signature && <p className="text-xs text-muted-foreground">— {message.signature}</p>}
       </CardContent>
     </Card>
   );

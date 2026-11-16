@@ -5,6 +5,16 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface PortalMessageInput {
+  /** @maxLength 10000 */
+  message: string;
+  /** @maxLength 200 */
+  signature: string;
+  /** @maxLength 80 */
+  quarterLabel: string;
+  visible: boolean;
+}
+
 export type PrivateCustomerPageStatus =
   (typeof PrivateCustomerPageStatus)[keyof typeof PrivateCustomerPageStatus];
 
@@ -4408,6 +4418,10 @@ export type NotFoundResponse = ErrorEnvelope;
  * Bad request
  */
 export type BadRequestResponse = ErrorEnvelope;
+
+export type GetPortalCeoMessage200 = {
+  item: PortalMessageInput | null;
+};
 
 export type ListPrivateCustomerPages200 = {
   items: PrivateCustomerPage[];

@@ -75,3 +75,4 @@ export * from "./briefingPodcasts";
 export * from "./privateCustomerPages";
 export * from "./privateCustomerAssets";
 export * from "./sharedOrganizationAccounts";
+export * from "./portalMessage";

@@ -123,6 +123,7 @@ import AdminAiGrounding from "@/pages/admin/ai/grounding";
 import AdminInsightsQuestions from "@/pages/admin/insights/questions";
 import InsightsAskPage from "@/pages/insights/ask";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
+import PortalMessageEditor from "@/pages/admin/site-config/portal-message";
 import AdminLandingPagesList from "@/pages/admin/site-config/landing-pages-list";
 import AdminLandingPageEdit from "@/pages/admin/site-config/landing-page-edit";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
@@ -447,6 +448,7 @@ function AdminRoutes() {
           {(params) => <AdminExperimentDetail id={params.id} />}
         </Route>
         <Route path="/site-config/list-page-copy" component={AdminListPageCopy} />
+        <Route path="/site-config/portal-message" component={PortalMessageEditor} />
         <Route path="/site-config/landing-pages" component={AdminLandingPagesList} />
         <Route path="/site-config/landing-pages/new">
           <AdminLandingPageEdit />
