@@ -72,6 +72,16 @@ async function loadKnownSpeFileIds(): Promise<Set<string>> {
     const chapters = await pool.query<{ item_id: string }>("SELECT item_id FROM chapter_audio_files");
     for (const file of chapters.rows) set.add(file.item_id);
   }
+  // Private customer materials must not be treated as orphaned public media.
+  // Retired/failed rows remain protected until an explicit private cleanup
+  // operation removes the bytes and registry entry together.
+  const privateRegistry = await pool.query("SELECT to_regclass('private_customer_assets') AS relation");
+  if (privateRegistry.rows[0]?.relation) {
+    const privateFiles = await pool.query<{ item_id: string }>(
+      "SELECT item_id FROM private_customer_assets WHERE item_id IS NOT NULL",
+    );
+    for (const file of privateFiles.rows) set.add(file.item_id);
+  }
   return set;
 }
 

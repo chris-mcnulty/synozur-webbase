@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
 import chapterAudioRouter from "./chapterAudio";
+import privateCustomerPagesRouter from "./privateCustomerPages";
+import sharedOrganizationAccessRouter from "./sharedOrganizationAccess";
 import healthRouter from "./health";
 import storageRouter from "./storage";
 import adminRouter from "./admin";
@@ -80,6 +82,8 @@ import mcpRouter from "./mcp";
 import engagementsAdminRouter from "./engagementsAdmin";
 
 const router: IRouter = Router();
+router.use(privateCustomerPagesRouter);
+router.use(sharedOrganizationAccessRouter);
 router.use(chapterAudioRouter);
 
 router.use(healthRouter);

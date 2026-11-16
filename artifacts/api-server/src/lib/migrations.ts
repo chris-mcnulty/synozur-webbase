@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { logger } from "./logger";
 import { backfillLandingPageCollateral } from "./syncCollateral";
 import { migrateBoard } from "./boardMigration";
+import { migratePrivateCustomerPages } from "./privatePages/migration";
 
 /**
  * Idempotent schema migrations that run on every server startup.
@@ -4010,6 +4011,7 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS hubspot_deal_id TEXT;
     `);
 
+    await migratePrivateCustomerPages();
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

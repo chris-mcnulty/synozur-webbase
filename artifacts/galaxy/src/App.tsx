@@ -1,5 +1,7 @@
 import * as React from "react";
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import PrivatePagesList from "@/pages/private-pages";
+import PrivatePageDetail from "@/pages/private-page-detail";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -77,10 +79,12 @@ function AuthLoadingSkeleton() {
   );
 }
 
-function Gated({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth();
+function Gated({ children, allowShared = false }: { children: React.ReactNode; allowShared?: boolean }) {
+  const { isLoaded, isSignedIn, user } = useAuth();
   if (!isLoaded) return <AuthLoadingSkeleton />;
   if (!isSignedIn) return <SignInRequired />;
+  // Shared organization identities may only see private pages.
+  if (!allowShared && user?.authProvider === "shared_org") return <Redirect to="/pages" replace />;
   return <>{children}</>;
 }
 
@@ -89,6 +93,12 @@ function AppRouter() {
     <Switch>
       <Route path="/accept-invite" component={AcceptInvitePage} />
       <Route path="/oauth-callback" component={OAuthCallback} />
+      <Route path="/pages">
+        <Gated allowShared><PrivatePagesList /></Gated>
+      </Route>
+      <Route path="/pages/:id">
+        {(params) => <Gated allowShared><PrivatePageDetail id={params.id!} /></Gated>}
+      </Route>
       <Route path="/">
         <Gated><Home /></Gated>
       </Route>

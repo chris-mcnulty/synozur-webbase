@@ -68,6 +68,254 @@ tags:
   - name: CmsApiKeys
     description: Admin API key management for machine-to-machine access.
 paths:
+  /private-pages:
+    get:
+      operationId: listPrivateCustomerPages
+      responses:
+        "200": &pageList
+          description: Authorized pages only
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/PrivateCustomerPage" }
+        "401": &unauthorized
+          description: Unauthorized
+        "403": &forbidden
+          description: Forbidden
+  /private-pages/{id}:
+    parameters: &memberParams
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: previewOrg, in: query, schema: { type: string, format: uuid }, description: Explicit staff-only organization preview }
+    get:
+      operationId: getPrivateCustomerPage
+      responses:
+        "200": &page
+          description: Private page metadata without provider URLs
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrivateCustomerPage" }
+        "401": *unauthorized
+        "404": &notFound
+          description: Not found or inaccessible
+  /private-pages/{id}/html:
+    parameters: *memberParams
+    get:
+      operationId: getPrivateCustomerHtml
+      responses:
+        "200":
+          description: Isolated HTML with restrictive CSP and sandbox response headers
+          content:
+            text/html:
+              schema: { type: string }
+        "401": *unauthorized
+        "404": *notFound
+  /private-pages/{id}/script:
+    parameters: *memberParams
+    get:
+      operationId: getPrivateCustomerNarration
+      responses:
+        "200":
+          description: Supplied narration script, not a verified verbatim transcript
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text]
+                properties:
+                  text: { type: string }
+        "401": *unauthorized
+        "404": *notFound
+  /private-pages/{id}/assets/{kind}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: kind, in: path, required: true, schema: { type: string, enum: [audio, transcript] } }
+      - { name: previewOrg, in: query, schema: { type: string, format: uuid } }
+      - { name: Range, in: header, schema: { type: string } }
+    get:
+      operationId: downloadPrivateCustomerAttachment
+      responses:
+        "200":
+          description: Authenticated private attachment bytes
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206":
+          description: Single audio byte range, with Content-Range and Content-Length
+        "416":
+          description: Unsatisfiable audio range, with bytes */size Content-Range
+        "401": *unauthorized
+        "404": *notFound
+  /admin/private-pages/{orgId}/pages:
+    parameters: &orgParams
+      - { name: orgId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: listAdminPrivateCustomerPages
+      responses:
+        "200": *pageList
+        "401": *unauthorized
+        "403": *forbidden
+    post:
+      operationId: createPrivateCustomerPage
+      parameters: &writeParams
+        - { name: X-Galaxy-Request, in: header, required: true, schema: { type: string, enum: ["1"] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrivatePageInput" }
+      responses:
+        "201": *page
+        "400": &badRequest
+          description: Invalid request
+        "403": *forbidden
+        "409": &conflict
+          description: Conflict or incomplete review/upload
+  /admin/private-pages/{orgId}/pages/{id}:
+    parameters: &adminItemParams
+      - { name: orgId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: updatePrivateCustomerPage
+      parameters: *writeParams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrivatePageUpdate" }
+      responses:
+        "200": *page
+        "400": *badRequest
+        "403": *forbidden
+        "404": *notFound
+        "409": *conflict
+  /admin/private-pages/{orgId}/pages/{id}/assets/{kind}:
+    parameters:
+      - { name: orgId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: kind, in: path, required: true, schema: { type: string, enum: [html, audio, transcript] } }
+      - { name: X-Galaxy-Request, in: header, required: true, schema: { type: string, enum: ["1"] } }
+      - { name: X-Filename, in: header, required: true, schema: { type: string } }
+      - { name: X-Page-Revision, in: header, required: true, schema: { type: integer, minimum: 1 } }
+    put:
+      operationId: uploadPrivateCustomerAsset
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200": *page
+        "400": *badRequest
+        "403": *forbidden
+        "404": *notFound
+        "409": *conflict
+        "413": { description: Attachment exceeds size limit }
+        "503": { description: Private storage unavailable; page stays draft }
+  /admin/private-pages/{orgId}/accounts:
+    parameters: *orgParams
+    get:
+      operationId: listSharedOrganizationAccounts
+      responses:
+        "200":
+          description: Account summaries, never password hashes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/SharedAccountSummary" }
+        "403": *forbidden
+    post:
+      operationId: createSharedOrganizationAccount
+      parameters: *writeParams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SharedAccountInput" }
+      responses:
+        "201": &passwordResult
+          description: Password shown once, no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account, password]
+                properties:
+                  account: { $ref: "#/components/schemas/SharedAccountSummary" }
+                  password: { type: string }
+        "400": *badRequest
+        "403": *forbidden
+        "409": *conflict
+  /admin/private-pages/{orgId}/accounts/{id}/rotate:
+    parameters: *adminItemParams
+    post:
+      operationId: rotateSharedOrganizationAccount
+      parameters: *writeParams
+      responses:
+        "200": *passwordResult
+        "403": *forbidden
+        "404": *notFound
+  /admin/private-pages/{orgId}/accounts/{id}/disable:
+    parameters: *adminItemParams
+    post:
+      operationId: disableSharedOrganizationAccount
+      parameters: *writeParams
+      responses:
+        "200": &ok
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "403": *forbidden
+        "404": *notFound
+  /auth/shared/session:
+    get:
+      operationId: getSharedOrganizationSession
+      responses:
+        "200":
+          description: Shared cookie identity or signed-out state; no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [signedIn, user]
+                properties:
+                  signedIn: { type: boolean }
+                  user: { type: [object, "null"], additionalProperties: true }
+  /auth/shared/login:
+    post:
+      operationId: signInSharedOrganization
+      parameters: *writeParams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SharedLoginInput" }
+      responses:
+        "200": *ok
+        "401": *unauthorized
+        "403": *forbidden
+        "429": { description: Account or IP throttle }
+  /auth/shared/logout:
+    post:
+      operationId: signOutSharedOrganization
+      parameters: *writeParams
+      responses:
+        "200": *ok
+        "403": *forbidden
   /board:
     get:
       operationId: listBoard
@@ -5034,6 +5282,63 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    PrivateCustomerPage:
+      type: object
+      required: [id, organizationId, title, slug, status, revision, reviewedRevision, assets]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: [string, "null"], format: uuid }
+        title: { type: string }
+        slug: { type: string }
+        status: { type: string, enum: [draft, published, archived] }
+        revision: { type: integer }
+        reviewedRevision: { type: [integer, "null"] }
+        assets:
+          type: array
+          items: { $ref: "#/components/schemas/PrivateCustomerAsset" }
+    PrivateCustomerAsset:
+      type: object
+      required: [id, kind, filename, contentType, sizeBytes, state]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [html, audio, transcript] }
+        filename: { type: string }
+        contentType: { type: string }
+        sizeBytes: { type: number }
+        state: { type: string, enum: [ready] }
+    PrivatePageInput:
+      type: object
+      required: [title, slug]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        slug: { type: string, minLength: 1, maxLength: 100, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }
+    PrivatePageUpdate:
+      type: object
+      required: [revision]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        slug: { type: string, minLength: 1, maxLength: 100, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }
+        revision: { type: integer, minimum: 1 }
+        action: { type: string, enum: [review, publish, unpublish, archive, assign] }
+    SharedAccountSummary:
+      type: object
+      required: [id, username, disabled]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        disabled: { type: boolean }
+    SharedAccountInput:
+      type: object
+      required: [username]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 128, pattern: "^[a-z0-9][a-z0-9._@+-]{2,127}$" }
+    SharedLoginInput:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 128 }
+        password: { type: string, minLength: 1, maxLength: 128 }
+
     BoardVisibility:
       type: object
       required: [public]

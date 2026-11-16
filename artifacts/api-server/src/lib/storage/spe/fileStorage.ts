@@ -30,7 +30,7 @@ export class SpeNotEnabledError extends Error {
   }
 }
 
-export type SpeDocumentType = "media" | "attachment" | "briefing" | "chapter-audio";
+export type SpeDocumentType = "media" | "attachment" | "briefing" | "chapter-audio" | "private-page";
 
 export interface StoreFileOptions {
   body: Buffer;

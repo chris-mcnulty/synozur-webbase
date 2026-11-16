@@ -7,6 +7,345 @@
  */
 import * as zod from "zod";
 
+export const ListPrivateCustomerPagesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      organizationId: zod.string().uuid().nullable(),
+      title: zod.string(),
+      slug: zod.string(),
+      status: zod.enum(["draft", "published", "archived"]),
+      revision: zod.number(),
+      reviewedRevision: zod.number().nullable(),
+      assets: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          kind: zod.enum(["html", "audio", "transcript"]),
+          filename: zod.string(),
+          contentType: zod.string(),
+          sizeBytes: zod.number(),
+          state: zod.enum(["ready"]),
+        }),
+      ),
+    }),
+  ),
+});
+
+export const GetPrivateCustomerPageParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetPrivateCustomerPageQueryParams = zod.object({
+  previewOrg: zod.coerce
+    .string()
+    .uuid()
+    .optional()
+    .describe("Explicit staff-only organization preview"),
+});
+
+export const GetPrivateCustomerPageResponse = zod.object({
+  id: zod.string().uuid(),
+  organizationId: zod.string().uuid().nullable(),
+  title: zod.string(),
+  slug: zod.string(),
+  status: zod.enum(["draft", "published", "archived"]),
+  revision: zod.number(),
+  reviewedRevision: zod.number().nullable(),
+  assets: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      kind: zod.enum(["html", "audio", "transcript"]),
+      filename: zod.string(),
+      contentType: zod.string(),
+      sizeBytes: zod.number(),
+      state: zod.enum(["ready"]),
+    }),
+  ),
+});
+
+export const GetPrivateCustomerHtmlParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetPrivateCustomerHtmlQueryParams = zod.object({
+  previewOrg: zod.coerce
+    .string()
+    .uuid()
+    .optional()
+    .describe("Explicit staff-only organization preview"),
+});
+
+export const GetPrivateCustomerNarrationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetPrivateCustomerNarrationQueryParams = zod.object({
+  previewOrg: zod.coerce
+    .string()
+    .uuid()
+    .optional()
+    .describe("Explicit staff-only organization preview"),
+});
+
+export const GetPrivateCustomerNarrationResponse = zod.object({
+  text: zod.string(),
+});
+
+export const DownloadPrivateCustomerAttachmentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  kind: zod.enum(["audio", "transcript"]),
+});
+
+export const DownloadPrivateCustomerAttachmentQueryParams = zod.object({
+  previewOrg: zod.coerce.string().uuid().optional(),
+});
+
+export const DownloadPrivateCustomerAttachmentHeader = zod.object({
+  Range: zod.string().optional(),
+});
+
+export const ListAdminPrivateCustomerPagesParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+});
+
+export const ListAdminPrivateCustomerPagesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      organizationId: zod.string().uuid().nullable(),
+      title: zod.string(),
+      slug: zod.string(),
+      status: zod.enum(["draft", "published", "archived"]),
+      revision: zod.number(),
+      reviewedRevision: zod.number().nullable(),
+      assets: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          kind: zod.enum(["html", "audio", "transcript"]),
+          filename: zod.string(),
+          contentType: zod.string(),
+          sizeBytes: zod.number(),
+          state: zod.enum(["ready"]),
+        }),
+      ),
+    }),
+  ),
+});
+
+export const CreatePrivateCustomerPageParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+});
+
+export const CreatePrivateCustomerPageHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const createPrivateCustomerPageBodyTitleMax = 200;
+
+export const createPrivateCustomerPageBodySlugMax = 100;
+
+export const createPrivateCustomerPageBodySlugRegExp = new RegExp(
+  "^[a-z0-9]+(-[a-z0-9]+)\*$",
+);
+
+export const CreatePrivateCustomerPageBody = zod.object({
+  title: zod.string().min(1).max(createPrivateCustomerPageBodyTitleMax),
+  slug: zod
+    .string()
+    .min(1)
+    .max(createPrivateCustomerPageBodySlugMax)
+    .regex(createPrivateCustomerPageBodySlugRegExp),
+});
+
+export const UpdatePrivateCustomerPageParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdatePrivateCustomerPageHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const updatePrivateCustomerPageBodyTitleMax = 200;
+
+export const updatePrivateCustomerPageBodySlugMax = 100;
+
+export const updatePrivateCustomerPageBodySlugRegExp = new RegExp(
+  "^[a-z0-9]+(-[a-z0-9]+)\*$",
+);
+
+export const UpdatePrivateCustomerPageBody = zod.object({
+  title: zod
+    .string()
+    .min(1)
+    .max(updatePrivateCustomerPageBodyTitleMax)
+    .optional(),
+  slug: zod
+    .string()
+    .min(1)
+    .max(updatePrivateCustomerPageBodySlugMax)
+    .regex(updatePrivateCustomerPageBodySlugRegExp)
+    .optional(),
+  revision: zod.number().min(1),
+  action: zod
+    .enum(["review", "publish", "unpublish", "archive", "assign"])
+    .optional(),
+});
+
+export const UpdatePrivateCustomerPageResponse = zod.object({
+  id: zod.string().uuid(),
+  organizationId: zod.string().uuid().nullable(),
+  title: zod.string(),
+  slug: zod.string(),
+  status: zod.enum(["draft", "published", "archived"]),
+  revision: zod.number(),
+  reviewedRevision: zod.number().nullable(),
+  assets: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      kind: zod.enum(["html", "audio", "transcript"]),
+      filename: zod.string(),
+      contentType: zod.string(),
+      sizeBytes: zod.number(),
+      state: zod.enum(["ready"]),
+    }),
+  ),
+});
+
+export const UploadPrivateCustomerAssetParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+  id: zod.coerce.string().uuid(),
+  kind: zod.enum(["html", "audio", "transcript"]),
+});
+
+export const UploadPrivateCustomerAssetHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+  "X-Filename": zod.string(),
+  "X-Page-Revision": zod.number().min(1),
+});
+
+export const UploadPrivateCustomerAssetResponse = zod.object({
+  id: zod.string().uuid(),
+  organizationId: zod.string().uuid().nullable(),
+  title: zod.string(),
+  slug: zod.string(),
+  status: zod.enum(["draft", "published", "archived"]),
+  revision: zod.number(),
+  reviewedRevision: zod.number().nullable(),
+  assets: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      kind: zod.enum(["html", "audio", "transcript"]),
+      filename: zod.string(),
+      contentType: zod.string(),
+      sizeBytes: zod.number(),
+      state: zod.enum(["ready"]),
+    }),
+  ),
+});
+
+export const ListSharedOrganizationAccountsParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+});
+
+export const ListSharedOrganizationAccountsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      username: zod.string(),
+      disabled: zod.boolean(),
+    }),
+  ),
+});
+
+export const CreateSharedOrganizationAccountParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+});
+
+export const CreateSharedOrganizationAccountHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const createSharedOrganizationAccountBodyUsernameMin = 3;
+export const createSharedOrganizationAccountBodyUsernameMax = 128;
+
+export const createSharedOrganizationAccountBodyUsernameRegExp = new RegExp(
+  "^[a-z0-9][a-z0-9._@+-]{2,127}$",
+);
+
+export const CreateSharedOrganizationAccountBody = zod.object({
+  username: zod
+    .string()
+    .min(createSharedOrganizationAccountBodyUsernameMin)
+    .max(createSharedOrganizationAccountBodyUsernameMax)
+    .regex(createSharedOrganizationAccountBodyUsernameRegExp),
+});
+
+export const RotateSharedOrganizationAccountParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+  id: zod.coerce.string().uuid(),
+});
+
+export const RotateSharedOrganizationAccountHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const RotateSharedOrganizationAccountResponse = zod.object({
+  account: zod.object({
+    id: zod.string().uuid(),
+    username: zod.string(),
+    disabled: zod.boolean(),
+  }),
+  password: zod.string(),
+});
+
+export const DisableSharedOrganizationAccountParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+  id: zod.coerce.string().uuid(),
+});
+
+export const DisableSharedOrganizationAccountHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const DisableSharedOrganizationAccountResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+export const GetSharedOrganizationSessionResponse = zod.object({
+  signedIn: zod.boolean(),
+  user: zod.record(zod.string(), zod.unknown()).nullable(),
+});
+
+export const SignInSharedOrganizationHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const signInSharedOrganizationBodyUsernameMin = 3;
+export const signInSharedOrganizationBodyUsernameMax = 128;
+
+export const signInSharedOrganizationBodyPasswordMax = 128;
+
+export const SignInSharedOrganizationBody = zod.object({
+  username: zod
+    .string()
+    .min(signInSharedOrganizationBodyUsernameMin)
+    .max(signInSharedOrganizationBodyUsernameMax),
+  password: zod.string().min(1).max(signInSharedOrganizationBodyPasswordMax),
+});
+
+export const SignInSharedOrganizationResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+export const SignOutSharedOrganizationHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const SignOutSharedOrganizationResponse = zod.object({
+  ok: zod.boolean(),
+});
+
 export const listBoardResponseItemsItemOneSlugMax = 100;
 
 export const listBoardResponseItemsItemOneSlugRegExp = new RegExp(

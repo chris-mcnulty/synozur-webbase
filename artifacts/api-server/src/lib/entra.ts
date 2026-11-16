@@ -300,6 +300,8 @@ export async function applyClientOrgRole(
   userId: string,
   clientOrganizationId: string,
 ): Promise<void> {
+  const identity = await db.query.usersTable.findFirst({ where: eq(usersTable.id, userId) });
+  if (identity?.authProvider === "shared_org") return;
   const org = await db.query.clientOrganizationsTable.findFirst({
     where: and(
       eq(clientOrganizationsTable.id, clientOrganizationId),

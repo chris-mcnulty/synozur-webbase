@@ -18,6 +18,7 @@ import { matchIndexNowKeyPath } from "./lib/seoSubmit";
 import { securityHeadersMiddleware } from "./lib/securityHeaders";
 import { spaFallbackMiddleware } from "./middlewares/spaFallback";
 import { boardPageGuard } from "./lib/board";
+import { attachSharedAccess } from "./lib/privatePages/sharedAccess";
 
 const app: Express = express();
 
@@ -73,6 +74,7 @@ app.use(express.urlencoded({ extended: true }));
 // Native session resolver — populates `req.authedUser` and `req.session` if a
 // valid `sid` cookie is present.
 app.use(attachUserIfPresent);
+app.use(attachSharedAccess);
 app.use(boardPageGuard);
 
 // Branded short links (aka.synozur.com/<slug>). Runs before any other host

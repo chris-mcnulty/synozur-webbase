@@ -78,12 +78,15 @@ import type {
   CreateCollateralResourceBody,
   CreateExperimentBody,
   CreatePostBody,
+  CreateSharedOrganizationAccount201,
   CreateVariantBody,
   CurrentUser,
   CwvSampleInput,
+  DisableSharedOrganizationAccount200,
   DownloadChapterAudioParams,
   DownloadPortalDocumentParams,
   DownloadPortalDocumentVersionParams,
+  DownloadPrivateCustomerAttachmentParams,
   EntraUserConflict,
   EntraUserInput,
   ErrorEnvelope,
@@ -102,12 +105,18 @@ import type {
   GetCmsPostAnalyticsParams,
   GetEventSchedule200,
   GetExperimentResultsResponse,
+  GetPrivateCustomerHtmlParams,
+  GetPrivateCustomerNarration200,
+  GetPrivateCustomerNarrationParams,
+  GetPrivateCustomerPageParams,
+  GetSharedOrganizationSession200,
   HealthStatus,
   IngestTrafficBatch202,
   IngestTrafficBatchBody,
   LibraryAssetListResponse,
   ListAdminExperimentsResponse,
   ListAdminFormSubmissionsParams,
+  ListAdminPrivateCustomerPages200,
   ListAssetsParams,
   ListAuditLog200,
   ListAuditLogParams,
@@ -126,7 +135,9 @@ import type {
   ListPortalApps200,
   ListPortalDocumentsParams,
   ListPortalEngagements200,
+  ListPrivateCustomerPages200,
   ListPublicBookings200,
+  ListSharedOrganizationAccounts200,
   ListSolutionsParams,
   MediaItem,
   MediaListResponse,
@@ -158,6 +169,9 @@ import type {
   PostRevision,
   PostRevisionDetail,
   PreviewPolarisLibsynFeedParams,
+  PrivateCustomerPage,
+  PrivatePageInput,
+  PrivatePageUpdate,
   PublicComment,
   PublicEvent,
   PublicPost,
@@ -176,12 +190,17 @@ import type {
   RequestUploadUrlResponse,
   RetryFailedAdminFormSubmissionsParams,
   RetryFailedSubmissionsResult,
+  RotateSharedOrganizationAccount200,
   ScheduleCmsPostBody,
   Service,
   ServiceDetail,
   ServiceItemsResponse,
   ServiceListResponse,
   SetCmsUserRolesBody,
+  SharedAccountInput,
+  SharedLoginInput,
+  SignInSharedOrganization200,
+  SignOutSharedOrganization200,
   SiteHealthSnapshot,
   SiteSettings,
   SiteSettingsInput,
@@ -224,6 +243,1477 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getListPrivateCustomerPagesUrl = () => {
+  return `/api/private-pages`;
+};
+
+export const listPrivateCustomerPages = async (
+  options?: RequestInit,
+): Promise<ListPrivateCustomerPages200> => {
+  return customFetch<ListPrivateCustomerPages200>(
+    getListPrivateCustomerPagesUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPrivateCustomerPagesQueryKey = () => {
+  return [`/api/private-pages`] as const;
+};
+
+export const getListPrivateCustomerPagesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPrivateCustomerPages>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPrivateCustomerPages>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPrivateCustomerPagesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPrivateCustomerPages>>
+  > = ({ signal }) => listPrivateCustomerPages({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPrivateCustomerPages>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPrivateCustomerPagesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPrivateCustomerPages>>
+>;
+export type ListPrivateCustomerPagesQueryError = ErrorType<void>;
+
+export function useListPrivateCustomerPages<
+  TData = Awaited<ReturnType<typeof listPrivateCustomerPages>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPrivateCustomerPages>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPrivateCustomerPagesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetPrivateCustomerPageUrl = (
+  id: string,
+  params?: GetPrivateCustomerPageParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {});
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/private-pages/${id}?${stringifiedParams}`
+    : `/api/private-pages/${id}`;
+};
+
+export const getPrivateCustomerPage = async (
+  id: string,
+  params?: GetPrivateCustomerPageParams,
+  options?: RequestInit,
+): Promise<PrivateCustomerPage> => {
+  return customFetch<PrivateCustomerPage>(
+    getGetPrivateCustomerPageUrl(id, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetPrivateCustomerPageQueryKey = (
+  id: string,
+  params?: GetPrivateCustomerPageParams,
+) => {
+  return [`/api/private-pages/${id}`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetPrivateCustomerPageQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPrivateCustomerPage>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  params?: GetPrivateCustomerPageParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPrivateCustomerPage>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPrivateCustomerPageQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPrivateCustomerPage>>
+  > = ({ signal }) =>
+    getPrivateCustomerPage(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPrivateCustomerPage>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPrivateCustomerPageQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPrivateCustomerPage>>
+>;
+export type GetPrivateCustomerPageQueryError = ErrorType<void>;
+
+export function useGetPrivateCustomerPage<
+  TData = Awaited<ReturnType<typeof getPrivateCustomerPage>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  params?: GetPrivateCustomerPageParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPrivateCustomerPage>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPrivateCustomerPageQueryOptions(
+    id,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetPrivateCustomerHtmlUrl = (
+  id: string,
+  params?: GetPrivateCustomerHtmlParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {});
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/private-pages/${id}/html?${stringifiedParams}`
+    : `/api/private-pages/${id}/html`;
+};
+
+export const getPrivateCustomerHtml = async (
+  id: string,
+  params?: GetPrivateCustomerHtmlParams,
+  options?: RequestInit,
+): Promise<string> => {
+  return customFetch<string>(getGetPrivateCustomerHtmlUrl(id, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPrivateCustomerHtmlQueryKey = (
+  id: string,
+  params?: GetPrivateCustomerHtmlParams,
+) => {
+  return [
+    `/api/private-pages/${id}/html`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetPrivateCustomerHtmlQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPrivateCustomerHtml>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  params?: GetPrivateCustomerHtmlParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPrivateCustomerHtml>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPrivateCustomerHtmlQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPrivateCustomerHtml>>
+  > = ({ signal }) =>
+    getPrivateCustomerHtml(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPrivateCustomerHtml>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPrivateCustomerHtmlQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPrivateCustomerHtml>>
+>;
+export type GetPrivateCustomerHtmlQueryError = ErrorType<void>;
+
+export function useGetPrivateCustomerHtml<
+  TData = Awaited<ReturnType<typeof getPrivateCustomerHtml>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  params?: GetPrivateCustomerHtmlParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPrivateCustomerHtml>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPrivateCustomerHtmlQueryOptions(
+    id,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetPrivateCustomerNarrationUrl = (
+  id: string,
+  params?: GetPrivateCustomerNarrationParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {});
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/private-pages/${id}/script?${stringifiedParams}`
+    : `/api/private-pages/${id}/script`;
+};
+
+export const getPrivateCustomerNarration = async (
+  id: string,
+  params?: GetPrivateCustomerNarrationParams,
+  options?: RequestInit,
+): Promise<GetPrivateCustomerNarration200> => {
+  return customFetch<GetPrivateCustomerNarration200>(
+    getGetPrivateCustomerNarrationUrl(id, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetPrivateCustomerNarrationQueryKey = (
+  id: string,
+  params?: GetPrivateCustomerNarrationParams,
+) => {
+  return [
+    `/api/private-pages/${id}/script`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetPrivateCustomerNarrationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPrivateCustomerNarration>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  params?: GetPrivateCustomerNarrationParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPrivateCustomerNarration>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetPrivateCustomerNarrationQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPrivateCustomerNarration>>
+  > = ({ signal }) =>
+    getPrivateCustomerNarration(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPrivateCustomerNarration>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPrivateCustomerNarrationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPrivateCustomerNarration>>
+>;
+export type GetPrivateCustomerNarrationQueryError = ErrorType<void>;
+
+export function useGetPrivateCustomerNarration<
+  TData = Awaited<ReturnType<typeof getPrivateCustomerNarration>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  params?: GetPrivateCustomerNarrationParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPrivateCustomerNarration>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPrivateCustomerNarrationQueryOptions(
+    id,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getDownloadPrivateCustomerAttachmentUrl = (
+  id: string,
+  kind: "audio" | "transcript",
+  params?: DownloadPrivateCustomerAttachmentParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {});
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/private-pages/${id}/assets/${kind}?${stringifiedParams}`
+    : `/api/private-pages/${id}/assets/${kind}`;
+};
+
+export const downloadPrivateCustomerAttachment = async (
+  id: string,
+  kind: "audio" | "transcript",
+  params?: DownloadPrivateCustomerAttachmentParams,
+  options?: RequestInit,
+): Promise<Blob | void> => {
+  return customFetch<Blob | void>(
+    getDownloadPrivateCustomerAttachmentUrl(id, kind, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getDownloadPrivateCustomerAttachmentQueryKey = (
+  id: string,
+  kind: "audio" | "transcript",
+  params?: DownloadPrivateCustomerAttachmentParams,
+) => {
+  return [
+    `/api/private-pages/${id}/assets/${kind}`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getDownloadPrivateCustomerAttachmentQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadPrivateCustomerAttachment>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  kind: "audio" | "transcript",
+  params?: DownloadPrivateCustomerAttachmentParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadPrivateCustomerAttachment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getDownloadPrivateCustomerAttachmentQueryKey(id, kind, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadPrivateCustomerAttachment>>
+  > = ({ signal }) =>
+    downloadPrivateCustomerAttachment(id, kind, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(id && kind),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadPrivateCustomerAttachment>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadPrivateCustomerAttachmentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadPrivateCustomerAttachment>>
+>;
+export type DownloadPrivateCustomerAttachmentQueryError = ErrorType<void>;
+
+export function useDownloadPrivateCustomerAttachment<
+  TData = Awaited<ReturnType<typeof downloadPrivateCustomerAttachment>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  kind: "audio" | "transcript",
+  params?: DownloadPrivateCustomerAttachmentParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadPrivateCustomerAttachment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadPrivateCustomerAttachmentQueryOptions(
+    id,
+    kind,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getListAdminPrivateCustomerPagesUrl = (orgId: string) => {
+  return `/api/admin/private-pages/${orgId}/pages`;
+};
+
+export const listAdminPrivateCustomerPages = async (
+  orgId: string,
+  options?: RequestInit,
+): Promise<ListAdminPrivateCustomerPages200> => {
+  return customFetch<ListAdminPrivateCustomerPages200>(
+    getListAdminPrivateCustomerPagesUrl(orgId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAdminPrivateCustomerPagesQueryKey = (orgId: string) => {
+  return [`/api/admin/private-pages/${orgId}/pages`] as const;
+};
+
+export const getListAdminPrivateCustomerPagesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminPrivateCustomerPages>>,
+  TError = ErrorType<void>,
+>(
+  orgId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAdminPrivateCustomerPages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdminPrivateCustomerPagesQueryKey(orgId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminPrivateCustomerPages>>
+  > = ({ signal }) =>
+    listAdminPrivateCustomerPages(orgId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!orgId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminPrivateCustomerPages>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdminPrivateCustomerPagesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminPrivateCustomerPages>>
+>;
+export type ListAdminPrivateCustomerPagesQueryError = ErrorType<void>;
+
+export function useListAdminPrivateCustomerPages<
+  TData = Awaited<ReturnType<typeof listAdminPrivateCustomerPages>>,
+  TError = ErrorType<void>,
+>(
+  orgId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAdminPrivateCustomerPages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdminPrivateCustomerPagesQueryOptions(
+    orgId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreatePrivateCustomerPageUrl = (orgId: string) => {
+  return `/api/admin/private-pages/${orgId}/pages`;
+};
+
+export const createPrivateCustomerPage = async (
+  orgId: string,
+  privatePageInput: PrivatePageInput,
+  options?: RequestInit,
+): Promise<PrivateCustomerPage> => {
+  return customFetch<PrivateCustomerPage>(
+    getCreatePrivateCustomerPageUrl(orgId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(privatePageInput),
+    },
+  );
+};
+
+export const getCreatePrivateCustomerPageMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPrivateCustomerPage>>,
+    TError,
+    { orgId: string; data: BodyType<PrivatePageInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPrivateCustomerPage>>,
+  TError,
+  { orgId: string; data: BodyType<PrivatePageInput> },
+  TContext
+> => {
+  const mutationKey = ["createPrivateCustomerPage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPrivateCustomerPage>>,
+    { orgId: string; data: BodyType<PrivatePageInput> }
+  > = (props) => {
+    const { orgId, data } = props ?? {};
+
+    return createPrivateCustomerPage(orgId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePrivateCustomerPageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPrivateCustomerPage>>
+>;
+export type CreatePrivateCustomerPageMutationBody = BodyType<PrivatePageInput>;
+export type CreatePrivateCustomerPageMutationError = ErrorType<void>;
+
+export const useCreatePrivateCustomerPage = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPrivateCustomerPage>>,
+    TError,
+    { orgId: string; data: BodyType<PrivatePageInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPrivateCustomerPage>>,
+  TError,
+  { orgId: string; data: BodyType<PrivatePageInput> },
+  TContext
+> => {
+  return useMutation(getCreatePrivateCustomerPageMutationOptions(options));
+};
+
+export const getUpdatePrivateCustomerPageUrl = (orgId: string, id: string) => {
+  return `/api/admin/private-pages/${orgId}/pages/${id}`;
+};
+
+export const updatePrivateCustomerPage = async (
+  orgId: string,
+  id: string,
+  privatePageUpdate: PrivatePageUpdate,
+  options?: RequestInit,
+): Promise<PrivateCustomerPage> => {
+  return customFetch<PrivateCustomerPage>(
+    getUpdatePrivateCustomerPageUrl(orgId, id),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(privatePageUpdate),
+    },
+  );
+};
+
+export const getUpdatePrivateCustomerPageMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePrivateCustomerPage>>,
+    TError,
+    { orgId: string; id: string; data: BodyType<PrivatePageUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePrivateCustomerPage>>,
+  TError,
+  { orgId: string; id: string; data: BodyType<PrivatePageUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updatePrivateCustomerPage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePrivateCustomerPage>>,
+    { orgId: string; id: string; data: BodyType<PrivatePageUpdate> }
+  > = (props) => {
+    const { orgId, id, data } = props ?? {};
+
+    return updatePrivateCustomerPage(orgId, id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePrivateCustomerPageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePrivateCustomerPage>>
+>;
+export type UpdatePrivateCustomerPageMutationBody = BodyType<PrivatePageUpdate>;
+export type UpdatePrivateCustomerPageMutationError = ErrorType<void>;
+
+export const useUpdatePrivateCustomerPage = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePrivateCustomerPage>>,
+    TError,
+    { orgId: string; id: string; data: BodyType<PrivatePageUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePrivateCustomerPage>>,
+  TError,
+  { orgId: string; id: string; data: BodyType<PrivatePageUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdatePrivateCustomerPageMutationOptions(options));
+};
+
+export const getUploadPrivateCustomerAssetUrl = (
+  orgId: string,
+  id: string,
+  kind: "html" | "audio" | "transcript",
+) => {
+  return `/api/admin/private-pages/${orgId}/pages/${id}/assets/${kind}`;
+};
+
+export const uploadPrivateCustomerAsset = async (
+  orgId: string,
+  id: string,
+  kind: "html" | "audio" | "transcript",
+  uploadPrivateCustomerAssetBody: Blob,
+  options?: RequestInit,
+): Promise<PrivateCustomerPage> => {
+  return customFetch<PrivateCustomerPage>(
+    getUploadPrivateCustomerAssetUrl(orgId, id, kind),
+    {
+      ...options,
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/octet-stream",
+        ...options?.headers,
+      },
+      body: JSON.stringify(uploadPrivateCustomerAssetBody),
+    },
+  );
+};
+
+export const getUploadPrivateCustomerAssetMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadPrivateCustomerAsset>>,
+    TError,
+    {
+      orgId: string;
+      id: string;
+      kind: "html" | "audio" | "transcript";
+      data: BodyType<Blob>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadPrivateCustomerAsset>>,
+  TError,
+  {
+    orgId: string;
+    id: string;
+    kind: "html" | "audio" | "transcript";
+    data: BodyType<Blob>;
+  },
+  TContext
+> => {
+  const mutationKey = ["uploadPrivateCustomerAsset"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadPrivateCustomerAsset>>,
+    {
+      orgId: string;
+      id: string;
+      kind: "html" | "audio" | "transcript";
+      data: BodyType<Blob>;
+    }
+  > = (props) => {
+    const { orgId, id, kind, data } = props ?? {};
+
+    return uploadPrivateCustomerAsset(orgId, id, kind, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadPrivateCustomerAssetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadPrivateCustomerAsset>>
+>;
+export type UploadPrivateCustomerAssetMutationBody = BodyType<Blob>;
+export type UploadPrivateCustomerAssetMutationError = ErrorType<void>;
+
+export const useUploadPrivateCustomerAsset = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadPrivateCustomerAsset>>,
+    TError,
+    {
+      orgId: string;
+      id: string;
+      kind: "html" | "audio" | "transcript";
+      data: BodyType<Blob>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadPrivateCustomerAsset>>,
+  TError,
+  {
+    orgId: string;
+    id: string;
+    kind: "html" | "audio" | "transcript";
+    data: BodyType<Blob>;
+  },
+  TContext
+> => {
+  return useMutation(getUploadPrivateCustomerAssetMutationOptions(options));
+};
+
+export const getListSharedOrganizationAccountsUrl = (orgId: string) => {
+  return `/api/admin/private-pages/${orgId}/accounts`;
+};
+
+export const listSharedOrganizationAccounts = async (
+  orgId: string,
+  options?: RequestInit,
+): Promise<ListSharedOrganizationAccounts200> => {
+  return customFetch<ListSharedOrganizationAccounts200>(
+    getListSharedOrganizationAccountsUrl(orgId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListSharedOrganizationAccountsQueryKey = (orgId: string) => {
+  return [`/api/admin/private-pages/${orgId}/accounts`] as const;
+};
+
+export const getListSharedOrganizationAccountsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSharedOrganizationAccounts>>,
+  TError = ErrorType<void>,
+>(
+  orgId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSharedOrganizationAccounts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSharedOrganizationAccountsQueryKey(orgId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSharedOrganizationAccounts>>
+  > = ({ signal }) =>
+    listSharedOrganizationAccounts(orgId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!orgId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSharedOrganizationAccounts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSharedOrganizationAccountsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSharedOrganizationAccounts>>
+>;
+export type ListSharedOrganizationAccountsQueryError = ErrorType<void>;
+
+export function useListSharedOrganizationAccounts<
+  TData = Awaited<ReturnType<typeof listSharedOrganizationAccounts>>,
+  TError = ErrorType<void>,
+>(
+  orgId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSharedOrganizationAccounts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSharedOrganizationAccountsQueryOptions(
+    orgId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateSharedOrganizationAccountUrl = (orgId: string) => {
+  return `/api/admin/private-pages/${orgId}/accounts`;
+};
+
+export const createSharedOrganizationAccount = async (
+  orgId: string,
+  sharedAccountInput: SharedAccountInput,
+  options?: RequestInit,
+): Promise<CreateSharedOrganizationAccount201> => {
+  return customFetch<CreateSharedOrganizationAccount201>(
+    getCreateSharedOrganizationAccountUrl(orgId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(sharedAccountInput),
+    },
+  );
+};
+
+export const getCreateSharedOrganizationAccountMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSharedOrganizationAccount>>,
+    TError,
+    { orgId: string; data: BodyType<SharedAccountInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSharedOrganizationAccount>>,
+  TError,
+  { orgId: string; data: BodyType<SharedAccountInput> },
+  TContext
+> => {
+  const mutationKey = ["createSharedOrganizationAccount"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSharedOrganizationAccount>>,
+    { orgId: string; data: BodyType<SharedAccountInput> }
+  > = (props) => {
+    const { orgId, data } = props ?? {};
+
+    return createSharedOrganizationAccount(orgId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSharedOrganizationAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSharedOrganizationAccount>>
+>;
+export type CreateSharedOrganizationAccountMutationBody =
+  BodyType<SharedAccountInput>;
+export type CreateSharedOrganizationAccountMutationError = ErrorType<void>;
+
+export const useCreateSharedOrganizationAccount = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSharedOrganizationAccount>>,
+    TError,
+    { orgId: string; data: BodyType<SharedAccountInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSharedOrganizationAccount>>,
+  TError,
+  { orgId: string; data: BodyType<SharedAccountInput> },
+  TContext
+> => {
+  return useMutation(
+    getCreateSharedOrganizationAccountMutationOptions(options),
+  );
+};
+
+export const getRotateSharedOrganizationAccountUrl = (
+  orgId: string,
+  id: string,
+) => {
+  return `/api/admin/private-pages/${orgId}/accounts/${id}/rotate`;
+};
+
+export const rotateSharedOrganizationAccount = async (
+  orgId: string,
+  id: string,
+  options?: RequestInit,
+): Promise<RotateSharedOrganizationAccount200> => {
+  return customFetch<RotateSharedOrganizationAccount200>(
+    getRotateSharedOrganizationAccountUrl(orgId, id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getRotateSharedOrganizationAccountMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>,
+    TError,
+    { orgId: string; id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>,
+  TError,
+  { orgId: string; id: string },
+  TContext
+> => {
+  const mutationKey = ["rotateSharedOrganizationAccount"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>,
+    { orgId: string; id: string }
+  > = (props) => {
+    const { orgId, id } = props ?? {};
+
+    return rotateSharedOrganizationAccount(orgId, id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RotateSharedOrganizationAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>
+>;
+
+export type RotateSharedOrganizationAccountMutationError = ErrorType<void>;
+
+export const useRotateSharedOrganizationAccount = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>,
+    TError,
+    { orgId: string; id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>,
+  TError,
+  { orgId: string; id: string },
+  TContext
+> => {
+  return useMutation(
+    getRotateSharedOrganizationAccountMutationOptions(options),
+  );
+};
+
+export const getDisableSharedOrganizationAccountUrl = (
+  orgId: string,
+  id: string,
+) => {
+  return `/api/admin/private-pages/${orgId}/accounts/${id}/disable`;
+};
+
+export const disableSharedOrganizationAccount = async (
+  orgId: string,
+  id: string,
+  options?: RequestInit,
+): Promise<DisableSharedOrganizationAccount200> => {
+  return customFetch<DisableSharedOrganizationAccount200>(
+    getDisableSharedOrganizationAccountUrl(orgId, id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getDisableSharedOrganizationAccountMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disableSharedOrganizationAccount>>,
+    TError,
+    { orgId: string; id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof disableSharedOrganizationAccount>>,
+  TError,
+  { orgId: string; id: string },
+  TContext
+> => {
+  const mutationKey = ["disableSharedOrganizationAccount"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof disableSharedOrganizationAccount>>,
+    { orgId: string; id: string }
+  > = (props) => {
+    const { orgId, id } = props ?? {};
+
+    return disableSharedOrganizationAccount(orgId, id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DisableSharedOrganizationAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof disableSharedOrganizationAccount>>
+>;
+
+export type DisableSharedOrganizationAccountMutationError = ErrorType<void>;
+
+export const useDisableSharedOrganizationAccount = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disableSharedOrganizationAccount>>,
+    TError,
+    { orgId: string; id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof disableSharedOrganizationAccount>>,
+  TError,
+  { orgId: string; id: string },
+  TContext
+> => {
+  return useMutation(
+    getDisableSharedOrganizationAccountMutationOptions(options),
+  );
+};
+
+export const getGetSharedOrganizationSessionUrl = () => {
+  return `/api/auth/shared/session`;
+};
+
+export const getSharedOrganizationSession = async (
+  options?: RequestInit,
+): Promise<GetSharedOrganizationSession200> => {
+  return customFetch<GetSharedOrganizationSession200>(
+    getGetSharedOrganizationSessionUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetSharedOrganizationSessionQueryKey = () => {
+  return [`/api/auth/shared/session`] as const;
+};
+
+export const getGetSharedOrganizationSessionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSharedOrganizationSession>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSharedOrganizationSession>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSharedOrganizationSessionQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSharedOrganizationSession>>
+  > = ({ signal }) =>
+    getSharedOrganizationSession({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSharedOrganizationSession>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSharedOrganizationSessionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSharedOrganizationSession>>
+>;
+export type GetSharedOrganizationSessionQueryError = ErrorType<unknown>;
+
+export function useGetSharedOrganizationSession<
+  TData = Awaited<ReturnType<typeof getSharedOrganizationSession>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSharedOrganizationSession>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSharedOrganizationSessionQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSignInSharedOrganizationUrl = () => {
+  return `/api/auth/shared/login`;
+};
+
+export const signInSharedOrganization = async (
+  sharedLoginInput: SharedLoginInput,
+  options?: RequestInit,
+): Promise<SignInSharedOrganization200> => {
+  return customFetch<SignInSharedOrganization200>(
+    getSignInSharedOrganizationUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(sharedLoginInput),
+    },
+  );
+};
+
+export const getSignInSharedOrganizationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signInSharedOrganization>>,
+    TError,
+    { data: BodyType<SharedLoginInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof signInSharedOrganization>>,
+  TError,
+  { data: BodyType<SharedLoginInput> },
+  TContext
+> => {
+  const mutationKey = ["signInSharedOrganization"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof signInSharedOrganization>>,
+    { data: BodyType<SharedLoginInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return signInSharedOrganization(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SignInSharedOrganizationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof signInSharedOrganization>>
+>;
+export type SignInSharedOrganizationMutationBody = BodyType<SharedLoginInput>;
+export type SignInSharedOrganizationMutationError = ErrorType<void>;
+
+export const useSignInSharedOrganization = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signInSharedOrganization>>,
+    TError,
+    { data: BodyType<SharedLoginInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof signInSharedOrganization>>,
+  TError,
+  { data: BodyType<SharedLoginInput> },
+  TContext
+> => {
+  return useMutation(getSignInSharedOrganizationMutationOptions(options));
+};
+
+export const getSignOutSharedOrganizationUrl = () => {
+  return `/api/auth/shared/logout`;
+};
+
+export const signOutSharedOrganization = async (
+  options?: RequestInit,
+): Promise<SignOutSharedOrganization200> => {
+  return customFetch<SignOutSharedOrganization200>(
+    getSignOutSharedOrganizationUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getSignOutSharedOrganizationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signOutSharedOrganization>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof signOutSharedOrganization>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["signOutSharedOrganization"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof signOutSharedOrganization>>,
+    void
+  > = () => {
+    return signOutSharedOrganization(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SignOutSharedOrganizationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof signOutSharedOrganization>>
+>;
+
+export type SignOutSharedOrganizationMutationError = ErrorType<void>;
+
+export const useSignOutSharedOrganization = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signOutSharedOrganization>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof signOutSharedOrganization>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getSignOutSharedOrganizationMutationOptions(options));
+};
 
 export const getListBoardUrl = () => {
   return `/api/board`;
