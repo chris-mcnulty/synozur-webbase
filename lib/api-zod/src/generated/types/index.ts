@@ -293,6 +293,7 @@ export * from "./setCmsUserRolesBody";
 export * from "./sharedAccountInput";
 export * from "./sharedAccountSummary";
 export * from "./sharedLoginInput";
+export * from "./sharedPasswordInput";
 export * from "./signInSharedOrganization200";
 export * from "./signOutSharedOrganization200";
 export * from "./siteHealthAiChat";

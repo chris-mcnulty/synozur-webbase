@@ -83,6 +83,16 @@ export function PrivatePagesPanel({ orgId }: { orgId: string }) {
   const [edits, setEdits] = useState<Record<string, { title: string; slug: string }>>({});
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
   const [newUsername, setNewUsername] = useState("");
+  const [passwordTarget, setPasswordTarget] = useState<Account | "new" | null>(null);
+  const [customPassword, setCustomPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMode, setPasswordMode] = useState<"generate" | "custom">("generate");
+  const passwordValid = passwordMode === "generate" || (
+    customPassword.length >= 15 && new TextEncoder().encode(customPassword).length <= 72 && customPassword === confirmPassword
+  );
+  function passwordDialog(target: Account | "new" | null) {
+    setPasswordTarget(target); setCustomPassword(""); setConfirmPassword(""); setPasswordMode("generate");
+  }
 
   const [secret, setSecret] = useState<PasswordResult | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -111,6 +121,7 @@ export function PrivatePagesPanel({ orgId }: { orgId: string }) {
   useEffect(() => {
     setPages(null); setAccounts(null); setEdits({}); setUploadErrors({});
     setNewTitle(""); setNewSlug(""); setNewUsername("");
+    passwordDialog(null);
     setSecret(null); setRevealed(false); setCopied(false);
     void load();
   }, [load]);
@@ -176,15 +187,19 @@ export function PrivatePagesPanel({ orgId }: { orgId: string }) {
 
   const createAccount = () => run("acct:create", async () => {
     const res = await call<PasswordResult>(`/admin/private-pages/${orgId}/accounts`, {
-      method: "POST", body: JSON.stringify({ username: newUsername.trim() }),
+      method: "POST", body: JSON.stringify({ username: newUsername.trim(), ...(passwordMode === "custom" ? { password: customPassword } : {}) }),
     });
     setNewUsername("");
+    passwordDialog(null);
     openSecret(res);
   });
   const rotate = (a: Account) => {
-    if (!confirm(`Rotate the password for ${a.username}? The current password stops working immediately.`)) return;
     void run(`acct:${a.id}:rotate`, async () => {
-      openSecret(await call<PasswordResult>(`/admin/private-pages/${orgId}/accounts/${a.id}/rotate`, { method: "POST" }));
+      const result = await call<PasswordResult>(`/admin/private-pages/${orgId}/accounts/${a.id}/rotate`, {
+        method: "POST", body: JSON.stringify(passwordMode === "custom" ? { password: customPassword } : {}),
+      });
+      passwordDialog(null);
+      openSecret(result);
     });
   };
   const disable = (a: Account) => {
@@ -371,7 +386,7 @@ export function PrivatePagesPanel({ orgId }: { orgId: string }) {
             <Label htmlFor="sa-username">Username</Label>
             <Input id="sa-username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} autoComplete="off" className="font-mono text-sm" />
           </div>
-          <Button onClick={() => void createAccount()} disabled={busy !== null || !newUsername.trim()} data-testid="button-create-shared-account">
+          <Button onClick={() => passwordDialog("new")} disabled={busy !== null || !newUsername.trim()} data-testid="button-create-shared-account">
             {busy === "acct:create" ? "Creating…" : "Create login"}
           </Button>
         </div>
@@ -387,7 +402,7 @@ export function PrivatePagesPanel({ orgId }: { orgId: string }) {
                 {a.disabled ? <Badge variant="secondary">Disabled</Badge> : <Badge variant="outline">Active</Badge>}
                 {!a.disabled && (
                   <>
-                    <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => rotate(a)}>Rotate password</Button>
+                    <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => passwordDialog(a)}>Set password</Button>
                     <Button size="sm" variant="ghost" className="text-destructive" disabled={busy !== null} onClick={() => disable(a)}>Disable</Button>
                   </>
                 )}
@@ -397,6 +412,35 @@ export function PrivatePagesPanel({ orgId }: { orgId: string }) {
         )}
       </Card>
 
+      <Dialog open={passwordTarget !== null} onOpenChange={(open) => { if (!open && busy === null) passwordDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{passwordTarget === "new" ? "Create shared login" : "Set shared login password"}</DialogTitle>
+            <DialogDescription>
+              {passwordTarget === "new" ? "Choose a password or generate one." : "Saving replaces the current password and signs out all existing sessions immediately."}
+            </DialogDescription>
+          </DialogHeader>
+          <Label htmlFor="shared-password-mode">Password option</Label>
+          <select id="shared-password-mode" className="h-10 rounded-md border bg-background px-3" value={passwordMode} disabled={busy !== null}
+            onChange={e => { setPasswordMode(e.target.value as "generate" | "custom"); setCustomPassword(""); setConfirmPassword(""); }}>
+            <option value="generate">Generate a secure password</option>
+            <option value="custom">Set my own password</option>
+          </select>
+          {passwordMode === "custom" && <>
+            <Label htmlFor="shared-custom-password">New password</Label>
+            <Input id="shared-custom-password" type="password" autoComplete="new-password" value={customPassword} disabled={busy !== null} onChange={e => setCustomPassword(e.target.value)} />
+            <Label htmlFor="shared-confirm-password">Confirm password</Label>
+            <Input id="shared-confirm-password" type="password" autoComplete="new-password" value={confirmPassword} disabled={busy !== null} onChange={e => setConfirmPassword(e.target.value)} />
+            <p className="text-xs text-muted-foreground">Use at least 15 characters, up to 72 UTF-8 bytes. Both entries must match.</p>
+          </>}
+          <DialogFooter>
+            <Button variant="outline" disabled={busy !== null} onClick={() => passwordDialog(null)}>Cancel</Button>
+            <Button disabled={busy !== null || !passwordValid} onClick={() => { if (passwordTarget === "new") void createAccount(); else if (passwordTarget) rotate(passwordTarget); }}>
+              {busy !== null ? "Saving…" : passwordTarget === "new" ? "Create login" : "Save password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!secret} onOpenChange={(o) => { if (!o) closeSecret(); }}>
         <DialogContent onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>

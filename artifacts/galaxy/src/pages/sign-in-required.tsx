@@ -28,7 +28,7 @@ export default function SignInRequired() {
     const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
     const raw = window.location.pathname;
     const path = (raw.startsWith(base) ? raw.slice(base.length) : raw) || "/";
-    if (skip || path === "/" || /^\/pages(\/|$)/.test(path)) {
+    if (skip || path === "/" || path === "/documents" || /^\/pages(\/|$)/.test(path)) {
       setShowManual(true);
       return;
     }
@@ -53,7 +53,7 @@ export default function SignInRequired() {
             <h1 className="text-2xl font-semibold">{showManual ? "Sign in to Galaxy" : "Signing you in…"}</h1>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Redirecting to sign in with your Synozur account.
+            {showManual ? "Sign in to open this private content. Use your individual Synozur account, or enter the shared organization credentials below." : "Redirecting to sign in with your Synozur account."}
           </p>
           {showManual && (
             <Button

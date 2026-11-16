@@ -105,7 +105,7 @@ function isPortalNavActive(entry: PortalNavEntry, location: string): boolean {
   );
 }
 
-const SHARED_NAV: PortalNavEntry[] = [{ href: "/pages", label: "Private pages" }];
+const SHARED_NAV: PortalNavEntry[] = [{ href: "/pages", label: "Private pages" }, { href: "/documents", label: "Documents" }];
 
 function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promise<void> }) {
   const [open, setOpen] = useState(false);

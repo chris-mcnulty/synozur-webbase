@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { pool } from "@workspace/db";
 import { z } from "zod";
+import { CreateSharedOrganizationAccountBody, RotateSharedOrganizationAccountBody } from "@workspace/api-zod";
 import { audit } from "../lib/audit";
 import { activeOrg, requirePrivateStaff, uuid } from "../lib/privatePages/access";
 import {
@@ -13,7 +14,9 @@ import {
 const router: IRouter = Router();
 const username = z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._@+-]{2,127}$/);
 const credentials = z.object({ username, password: z.string().min(1).max(128) }).strict();
-const accountBody = z.object({ username }).strict();
+const chosenPassword = z.string().min(15).max(72).refine(value => Buffer.byteLength(value, "utf8") <= 72);
+const accountBody = CreateSharedOrganizationAccountBody.extend({ username, password: chosenPassword.optional() }).strict();
+const passwordBody = RotateSharedOrganizationAccountBody.extend({ password: chosenPassword.optional() }).strict();
 // Same work factor for unknown users; generated in memory, never a credential.
 const dummyHash = bcrypt.hashSync(randomBytes(24).toString("base64url"), 12);
 const prefix = "/admin/private-pages/:orgId/accounts";
@@ -105,9 +108,9 @@ router.get(prefix, requirePrivateStaff, async (req, res): Promise<void> => {
 router.post(prefix, requirePrivateStaff, privateWriteGuard, async (req, res): Promise<void> => {
   const orgId = String(req.params.orgId);
   const parsed = accountBody.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "Use a unique username of 3–128 letters, digits, dots, underscores, hyphens, plus signs or @. Email-shaped usernames do not require email verification." }); return; }
+  if (!parsed.success) { res.status(400).json({ error: "Use a valid username. A custom password must contain at least 15 characters and at most 72 UTF-8 bytes, or omit it to generate one." }); return; }
   if (!(await activeOrg(orgId))) { res.status(404).json({ error: "Not found" }); return; }
-  const password = generateSharedPassword();
+  const password = parsed.data.password ?? generateSharedPassword();
   const hash = await bcrypt.hash(password, 12);
   const client = await pool.connect();
   const userId = randomUUID();
@@ -134,7 +137,11 @@ router.post(`${prefix}/:id/:action`, requirePrivateStaff, privateWriteGuard, asy
   if (!uuid.safeParse(orgId).success || !uuid.safeParse(id).success || !["rotate", "disable"].includes(action)) {
     res.status(404).json({ error: "Not found" }); return;
   }
-  const password = action === "rotate" ? generateSharedPassword() : null;
+  const parsedPassword = passwordBody.safeParse(req.body ?? {});
+  if (action === "rotate" && !parsedPassword.success) {
+    res.status(400).json({ error: "A custom password must contain at least 15 characters and at most 72 UTF-8 bytes, or omit it to generate one." }); return;
+  }
+  const password = action === "rotate" ? (parsedPassword.success ? parsedPassword.data.password : undefined) ?? generateSharedPassword() : null;
   const hash = password ? await bcrypt.hash(password, 12) : null;
   const client = await pool.connect();
   try {

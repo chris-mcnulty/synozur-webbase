@@ -118,7 +118,7 @@ function AppRouter() {
         <Gated><StageResourcesPage /></Gated>
       </Route>
       <Route path="/documents">
-        <Gated><Documents /></Gated>
+        <Gated allowShared><Documents /></Gated>
       </Route>
       <Route path="/apps">{() => <Gated><AppsPage /></Gated>}</Route>
       <Route path="/apps/:sourceApp">

@@ -8,6 +8,12 @@
 
 export interface SharedAccountInput {
   /**
+   * Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate.
+   * @minLength 15
+   * @maxLength 72
+   */
+  password?: string;
+  /**
    * @minLength 3
    * @maxLength 128
    * @pattern ^[a-z0-9][a-z0-9._@+-]{2,127}$

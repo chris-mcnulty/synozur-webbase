@@ -37,7 +37,9 @@ export function SharedSignInForm() {
       try { sessionStorage.removeItem(SHARED_SIGNOUT_FLAG); } catch { /* ignore */ }
       getOauthClient().clearTokens();
       await refresh();
-      navigate("/pages");
+      const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+      const path = window.location.pathname.startsWith(`${base}/`) ? window.location.pathname.slice(base.length) : "";
+      navigate(/^\/pages(?:\/[0-9a-f-]+)?\/?$/i.test(path) || path === "/documents" ? path : "/pages");
     } catch {
       setPassword("");
       setError("Sign-in failed. Check your connection and try again.");

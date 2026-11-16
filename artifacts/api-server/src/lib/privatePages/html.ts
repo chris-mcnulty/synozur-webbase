@@ -9,11 +9,43 @@ const hash = (s: string) => createHash("sha256").update(s).digest("base64");
 const APPROVED_SCRIPTS = new Set(["aiYkONm6l8Y6WJoO1Qzn4rtDq94/Ce/YqoKgknYzAc8="]);
 const BRIDGE = `(function(){
 let objectUrl;
+let controls;
 window.addEventListener("message", function(e){
- if(e.source!==parent || !e.data || e.data.type!=="private-page-audio" || !(e.data.blob instanceof Blob))return;
+ if(e.source!==parent || !e.data || e.data.type!=="private-page-assets")return;
+ if(controls)controls.remove();
  if(objectUrl)URL.revokeObjectURL(objectUrl);
- objectUrl=URL.createObjectURL(e.data.blob);
- document.querySelectorAll("audio").forEach(function(a){a.src=objectUrl;a.load();});
+ objectUrl=e.data.audioBlob instanceof Blob?URL.createObjectURL(e.data.audioBlob):null;
+ controls=document.createElement("aside");
+ controls.setAttribute("aria-label","Private proposal attachments");
+ controls.style.cssText="box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 20px;background:#171128;color:#fff;font:14px system-ui;position:relative;z-index:100";
+ function download(kind,label){
+  const b=document.createElement("button");b.type="button";b.textContent=label;
+  b.style.cssText="cursor:pointer;padding:7px 12px;border:1px solid #8c7ea5;border-radius:6px;background:transparent;color:#fff;font:inherit";
+  b.addEventListener("click",function(){parent.postMessage({type:"private-page-download",kind:kind},"*");});
+  controls.appendChild(b);
+ }
+ if(objectUrl){
+  const details=document.createElement("details");details.id="private-proposal-listen";
+  const summary=document.createElement("summary");summary.textContent="Listen to this proposal";summary.style.cursor="pointer";
+  const audio=document.createElement("audio");audio.controls=true;audio.preload="metadata";audio.src=objectUrl;
+  audio.style.cssText="display:block;max-width:100%;margin-top:10px";
+  details.appendChild(summary);details.appendChild(audio);controls.appendChild(details);
+  download("audio","Download audio");
+  document.querySelectorAll("audio").forEach(function(a){a.src=objectUrl;a.load();});
+ }
+ if(e.data.hasTranscript===true)download("transcript","Download narration script");
+ if(controls.childNodes.length)document.body.prepend(controls);
+});
+document.addEventListener("click",function(e){
+ const a=e.target instanceof Element?e.target.closest("[data-private-attachment]"):null;
+ if(!a)return;
+ e.preventDefault();
+ const kind=a.getAttribute("data-private-attachment");
+ if(kind==="transcript")parent.postMessage({type:"private-page-download",kind:"transcript"},"*");
+ else if(kind==="audio"){
+  const d=document.getElementById("private-proposal-listen");
+  if(d){d.open=true;d.scrollIntoView({behavior:"smooth",block:"nearest"});}
+ }
 });
 })();`;
 
@@ -87,10 +119,12 @@ export function preparePrivateHtml(source: string): { html: string; csp: string;
           if (/^#[a-z0-9_-]*$/i.test(attr.value)) attrs.push(attr);
           else if (/^[a-z0-9 _.-]+\.mp3$/i.test(attr.value)) {
             requiresAudio = true;
-            attrs.push({ name: "href", value: "#listen" });
+            attrs.push({ name: "href", value: "#private-proposal-listen" }, { name: "data-private-attachment", value: "audio" });
+          } else if (/^[a-z0-9 _.-]+\.docx$/i.test(attr.value)) {
+            attrs.push({ name: "href", value: "#private-script" }, { name: "data-private-attachment", value: "transcript" });
           }
           // External navigation, including mailto, is deliberately disabled.
-          // Its visible label remains unchanged; downloads live in trusted chrome.
+          // Its visible label remains unchanged; local attachments use the reviewed bridge.
         } else if (allowedAttrs.has(attr.name) || (isSvg && svgAttrs.has(attr.name))) attrs.push(attr);
         else if (["srcset", "ping", "formaction", "srcdoc", "action", "background", "target"].includes(attr.name)) {
           throw new Error(`Unsupported resource/navigation attribute: ${attr.name}.`);

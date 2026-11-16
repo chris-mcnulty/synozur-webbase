@@ -100,7 +100,22 @@ export interface SharedAccountSummary {
   disabled: boolean;
 }
 
+export interface SharedPasswordInput {
+  /**
+   * Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate.
+   * @minLength 15
+   * @maxLength 72
+   */
+  password?: string;
+}
+
 export interface SharedAccountInput {
+  /**
+   * Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate.
+   * @minLength 15
+   * @maxLength 72
+   */
+  password?: string;
   /**
    * @minLength 3
    * @maxLength 128

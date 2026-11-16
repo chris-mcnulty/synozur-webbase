@@ -36,6 +36,16 @@ test("HTML refresh metadata is removed and CSP precedes uploaded styles", () => 
   assert.doesNotMatch(result.html, /http-equiv="refresh"/);
   assert.ok(result.html.indexOf("Content-Security-Policy") < result.html.indexOf("<style>"));
 });
+test("private HTML provides inline attachment controls through the reviewed bridge only", () => {
+  const result = preparePrivateHtml(`<h1>Proposal</h1><a href="guide.mp3">Listen</a><a href="script.docx">Script</a>`);
+  assert.match(result.html, /data-private-attachment="audio"/);
+  assert.match(result.html, /data-private-attachment="transcript"/);
+  assert.match(result.html, /Listen to this proposal/);
+  assert.match(result.html, /private-page-download/);
+  assert.match(result.html, /e.source!==parent/);
+  assert.doesNotMatch(result.html, /href="(?:guide.mp3|script.docx)"/);
+  assert.match(result.csp, /connect-src 'none'/);
+});
 test("file validation rejects bad extensions, types and empty payloads", () => {
   assert.throws(() => validatePrivateFile("audio", "bad.mp3", Buffer.from("not audio")));
   assert.throws(() => validatePrivateFile("transcript", "script.docx", Buffer.from("not zip")));

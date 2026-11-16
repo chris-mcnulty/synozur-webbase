@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { useAuth } from "@/context/auth";
+import { listPrivatePages } from "@/lib/private-pages-api";
 import {
   useListPortalDocuments,
   listPortalDocuments,
@@ -90,8 +94,14 @@ function versionDownloadUrl(
 }
 
 export default function Documents() {
-  const meQuery = useGetPortalMe();
-  const docsQuery = useListPortalDocuments({ page: 1, pageSize: DOC_PAGE_SIZE });
+  const { user } = useAuth();
+  const shared = user?.authProvider === "shared_org";
+  const meQuery = useGetPortalMe({ query: { queryKey: ["/api/portal/me", user?.id], enabled: !shared } });
+  const docsQuery = useListPortalDocuments({ page: 1, pageSize: DOC_PAGE_SIZE }, { query: { queryKey: ["/api/portal/documents", user?.id, DOC_PAGE_SIZE], enabled: !shared } });
+  const privatePages = useQuery({
+    queryKey: ["document-private-pages", user?.id], queryFn: listPrivatePages,
+    refetchInterval: 30_000, refetchOnWindowFocus: true, gcTime: 0, retry: false,
+  });
   const [sortKey, setSortKey] = useState<SortKey>("lastModifiedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [openDoc, setOpenDoc] = useState<PortalDocument | null>(null);
@@ -206,7 +216,7 @@ export default function Documents() {
   const sortIndicator = (key: SortKey) =>
     sortKey === key ? (sortDir === "asc" ? "▲" : "▼") : "";
 
-  if (forbiddenReason) {
+  if (forbiddenReason && !privatePages.isLoading && !privatePages.data?.length) {
     return <NotCustomer reason={forbiddenReason} />;
   }
 
@@ -225,7 +235,21 @@ export default function Documents() {
           </p>
         </section>
 
-        {docsQuery.isLoading ? (
+        <section className="space-y-3" aria-label="Private HTML pages">
+          <h2 className="text-lg font-semibold">Private HTML pages</h2>
+          {privatePages.isLoading ? <Skeleton className="h-20 w-full" /> : privatePages.isError ? (
+            <Card className="p-4"><p>Private pages could not be loaded.</p><Button variant="outline" onClick={() => void privatePages.refetch()}>Try again</Button></Card>
+          ) : privatePages.data?.length ? (
+            <div className="space-y-2">{privatePages.data.map(page => (
+              <Card key={page.id} className="p-4 flex items-center justify-between gap-4">
+                <span>{page.title}</span>
+                <Button asChild variant="outline"><Link href={`/pages/${page.id}`}>Open private page</Link></Button>
+              </Card>
+            ))}</div>
+          ) : <p className="text-sm text-muted-foreground">No published private pages.</p>}
+        </section>
+
+        {shared || forbiddenReason ? null : docsQuery.isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-24 w-full" />

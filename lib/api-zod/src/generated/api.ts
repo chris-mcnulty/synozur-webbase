@@ -266,6 +266,9 @@ export const CreateSharedOrganizationAccountHeader = zod.object({
   "X-Galaxy-Request": zod.enum(["1"]),
 });
 
+export const createSharedOrganizationAccountBodyPasswordMin = 15;
+export const createSharedOrganizationAccountBodyPasswordMax = 72;
+
 export const createSharedOrganizationAccountBodyUsernameMin = 3;
 export const createSharedOrganizationAccountBodyUsernameMax = 128;
 
@@ -274,6 +277,14 @@ export const createSharedOrganizationAccountBodyUsernameRegExp = new RegExp(
 );
 
 export const CreateSharedOrganizationAccountBody = zod.object({
+  password: zod
+    .string()
+    .min(createSharedOrganizationAccountBodyPasswordMin)
+    .max(createSharedOrganizationAccountBodyPasswordMax)
+    .optional()
+    .describe(
+      "Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate.",
+    ),
   username: zod
     .string()
     .min(createSharedOrganizationAccountBodyUsernameMin)
@@ -288,6 +299,20 @@ export const RotateSharedOrganizationAccountParams = zod.object({
 
 export const RotateSharedOrganizationAccountHeader = zod.object({
   "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const rotateSharedOrganizationAccountBodyPasswordMin = 15;
+export const rotateSharedOrganizationAccountBodyPasswordMax = 72;
+
+export const RotateSharedOrganizationAccountBody = zod.object({
+  password: zod
+    .string()
+    .min(rotateSharedOrganizationAccountBodyPasswordMin)
+    .max(rotateSharedOrganizationAccountBodyPasswordMax)
+    .optional()
+    .describe(
+      "Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate.",
+    ),
 });
 
 export const RotateSharedOrganizationAccountResponse = zod.object({

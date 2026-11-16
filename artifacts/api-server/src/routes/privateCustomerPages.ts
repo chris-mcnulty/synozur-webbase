@@ -1,5 +1,6 @@
 import express, { Router, type IRouter } from "express";
 import { pool } from "@workspace/db";
+import { isPrivatePageAdmin } from "../lib/privatePages/access";
 import { z } from "zod";
 import { CreatePrivateCustomerPageBody, UpdatePrivateCustomerPageBody } from "@workspace/api-zod";
 import { audit } from "../lib/audit";
@@ -19,6 +20,12 @@ router.use("/private-pages", confidentialHeaders);
 router.use("/admin/private-pages", confidentialHeaders);
 router.get("/private-pages", async (req, res): Promise<void> => {
   if (!req.authedUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (isPrivatePageAdmin(req)) {
+    const result = await pool.query(`SELECT p.* FROM private_customer_pages p
+      JOIN client_organizations o ON o.id=p.organization_id
+      WHERE p.status='published' AND o.is_active AND o.deleted_at IS NULL ORDER BY p.title`);
+    res.json({ items: await Promise.all(result.rows.map(pageResponse)) }); return;
+  }
   const orgId = await memberOrg(req);
   if (!orgId) { res.status(403).json({ error: "Forbidden" }); return; }
   const result = await pool.query("SELECT * FROM private_customer_pages WHERE organization_id=$1 AND status='published' ORDER BY title", [orgId]);

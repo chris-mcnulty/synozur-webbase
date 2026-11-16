@@ -199,6 +199,7 @@ import type {
   SetCmsUserRolesBody,
   SharedAccountInput,
   SharedLoginInput,
+  SharedPasswordInput,
   SignInSharedOrganization200,
   SignOutSharedOrganization200,
   SiteHealthSnapshot,
@@ -1317,6 +1318,7 @@ export const getRotateSharedOrganizationAccountUrl = (
 export const rotateSharedOrganizationAccount = async (
   orgId: string,
   id: string,
+  sharedPasswordInput?: SharedPasswordInput,
   options?: RequestInit,
 ): Promise<RotateSharedOrganizationAccount200> => {
   return customFetch<RotateSharedOrganizationAccount200>(
@@ -1324,6 +1326,8 @@ export const rotateSharedOrganizationAccount = async (
     {
       ...options,
       method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(sharedPasswordInput),
     },
   );
 };
@@ -1335,14 +1339,14 @@ export const getRotateSharedOrganizationAccountMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>,
     TError,
-    { orgId: string; id: string },
+    { orgId: string; id: string; data: BodyType<SharedPasswordInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>,
   TError,
-  { orgId: string; id: string },
+  { orgId: string; id: string; data: BodyType<SharedPasswordInput> },
   TContext
 > => {
   const mutationKey = ["rotateSharedOrganizationAccount"];
@@ -1356,11 +1360,11 @@ export const getRotateSharedOrganizationAccountMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>,
-    { orgId: string; id: string }
+    { orgId: string; id: string; data: BodyType<SharedPasswordInput> }
   > = (props) => {
-    const { orgId, id } = props ?? {};
+    const { orgId, id, data } = props ?? {};
 
-    return rotateSharedOrganizationAccount(orgId, id, requestOptions);
+    return rotateSharedOrganizationAccount(orgId, id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1369,7 +1373,8 @@ export const getRotateSharedOrganizationAccountMutationOptions = <
 export type RotateSharedOrganizationAccountMutationResult = NonNullable<
   Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>
 >;
-
+export type RotateSharedOrganizationAccountMutationBody =
+  BodyType<SharedPasswordInput>;
 export type RotateSharedOrganizationAccountMutationError = ErrorType<void>;
 
 export const useRotateSharedOrganizationAccount = <
@@ -1379,14 +1384,14 @@ export const useRotateSharedOrganizationAccount = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>,
     TError,
-    { orgId: string; id: string },
+    { orgId: string; id: string; data: BodyType<SharedPasswordInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof rotateSharedOrganizationAccount>>,
   TError,
-  { orgId: string; id: string },
+  { orgId: string; id: string; data: BodyType<SharedPasswordInput> },
   TContext
 > => {
   return useMutation(

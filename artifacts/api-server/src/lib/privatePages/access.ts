@@ -4,6 +4,11 @@ import { z } from "zod";
 import { GetPrivateCustomerPageResponse } from "@workspace/api-zod";
 
 export const uuid = z.string().uuid();
+export function isPrivatePageAdmin(req: Request): boolean {
+  const user = req.authedUser;
+  return !!user && user.authProvider !== "shared_org" && user.authProvider !== "api_key" &&
+    user.roles.some(role => role === "admin" || role === "site_admin");
+}
 export const requirePrivateStaff: RequestHandler = (req, res, next) => {
   if (!req.authedUser) { res.status(401).json({ error: "Unauthorized" }); return; }
   if (req.authedUser.authProvider === "shared_org" || req.authedUser.authProvider === "api_key" ||
@@ -36,6 +41,16 @@ export async function authorizedPage(req: Request, id: string) {
   const previewOrg = req.query.previewOrg;
   let orgId: string | null = null;
   const preview = previewOrg !== undefined;
+  // A direct page ID is an explicit target: administrators need no customer
+  // membership or special preview URL. Other staff retain scoped previews.
+  if (!preview && isPrivatePageAdmin(req)) {
+    const result = await pool.query(`
+      SELECT p.* FROM private_customer_pages p
+      JOIN client_organizations o ON o.id=p.organization_id
+      WHERE p.id=$1 AND o.is_active AND o.deleted_at IS NULL
+    `, [id]);
+    return result.rows[0] ?? null;
+  }
   if (preview) {
     if (typeof previewOrg !== "string" || !uuid.safeParse(previewOrg).success ||
         req.authedUser.authProvider === "shared_org" || req.authedUser.authProvider === "api_key" ||

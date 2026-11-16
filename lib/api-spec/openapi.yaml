@@ -260,6 +260,11 @@ paths:
     post:
       operationId: rotateSharedOrganizationAccount
       parameters: *writeParams
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SharedPasswordInput" }
       responses:
         "200": *passwordResult
         "403": *forbidden
@@ -5327,10 +5332,15 @@ components:
         id: { type: string, format: uuid }
         username: { type: string }
         disabled: { type: boolean }
+    SharedPasswordInput:
+      type: object
+      properties:
+        password: { type: string, minLength: 15, maxLength: 72, description: "Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate." }
     SharedAccountInput:
       type: object
       required: [username]
       properties:
+        password: { type: string, minLength: 15, maxLength: 72, description: "Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate." }
         username: { type: string, minLength: 3, maxLength: 128, pattern: "^[a-z0-9][a-z0-9._@+-]{2,127}$" }
     SharedLoginInput:
       type: object

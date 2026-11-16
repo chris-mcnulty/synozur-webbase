@@ -7,9 +7,15 @@ Customer/prospect custom pages and their source HTML, audio and narration script
 
 **Why:** The user explicitly requires confidential organization-restricted delivery. Prospect access must not depend on an engagement contract.
 
-**How to apply:** Keep imports as drafts until an administrator reviews and publishes them. Resolve the intended organization exactly; never infer authorization from the first active organization. The first supplied example is MassHousing, not MassHealth.
+**How to apply:** Keep imports as drafts until an administrator reviews and publishes them. Resolve the intended organization exactly; never infer authorization from the first active organization. The first supplied example is MassHousing, not MassHealth. Synozur site administrators must also be able to open direct private-page links without joining a client organization (explicit user requirement); non-admin staff previews remain organization-scoped.
 
 Shared organization accounts are an explicitly provisioned exception, not a replacement for individual authentication. They must be read-only and attributed to the organization rather than an individual.
+
+Administrators must be able to choose shared organization passwords, not only generate them.
+
+**Why:** The user explicitly requested administrator-set passwords for Galaxy.
+
+**How to apply:** Offer custom and generated passwords for creation and replacement; preserve immediate revocation of existing sessions on replacement.
 
 **Why:** The user requires direct shared username/password access without verification loops, while keeping ordinary individual and Microsoft authentication unchanged.
 
@@ -32,3 +38,9 @@ Confidential HTML allows only explicitly vetted script hashes; arbitrary uploade
 **Why:** CSP and opaque origins do not stop an attacker-controlled script from navigating its own iframe to exfiltrate data. A vetted local interaction script preserves the original proposal controls without granting arbitrary execution.
 
 **How to apply:** Review new interaction scripts before approving their hashes; preserve safe static SVG shapes, embedded raster images and local interactions. Attachment playback uses a parent-fetched Blob passed into the sandbox rather than authenticated iframe requests or bearer links.
+
+Private proposal HTML is the primary reading experience, not a small embedded panel below Galaxy navigation. Keep audio and script controls compact inside the proposal and avoid a full transcript outside it or nested scrolling.
+
+**Why:** The user rejected the crowded preview and explicitly requested more screen space with attachment links inside the page.
+
+**How to apply:** Preserve proposal content and privacy while using a single scrolling surface and authenticated attachment controls.

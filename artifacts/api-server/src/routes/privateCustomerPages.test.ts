@@ -5,7 +5,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { pool } from "@workspace/db";
 import { migratePrivateCustomerPages } from "../lib/privatePages/migration";
-import { attachSharedAccess } from "../lib/privatePages/sharedAccess";
+import { attachSharedAccess, digest } from "../lib/privatePages/sharedAccess";
 import { attachUserIfPresent, loadUserById } from "../middlewares/auth";
 import privatePages from "./privateCustomerPages";
 import sharedAccounts from "./sharedOrganizationAccess";
@@ -30,10 +30,11 @@ test("private page and shared-account HTTP security lifecycle", async (t) => {
   app.use(express.json(), cookieParser(), attachUserIfPresent);
   // Test-only identity injection, never mounted in the application.
   app.use((req, _res, next) => {
+    Object.defineProperty(req, "ip", { value: `fixture-${orgA}` });
     const actor = req.get("x-test-person");
     if (([staff, member, outsider] as string[]).includes(actor ?? "")) req.authedUser = {
       id: actor!, authProvider: "local", externalSubject: null, email: null, displayName: "Synthetic",
-      avatarUrl: null, bio: null, roles: [], effectiveCapabilities: actor === staff ? ["client_orgs.manage"] : [],
+      avatarUrl: null, bio: null, roles: actor === staff && req.get("x-test-admin") === "1" ? ["site_admin"] : [], effectiveCapabilities: actor === staff ? ["client_orgs.manage"] : [],
     };
     next();
   });
@@ -75,6 +76,7 @@ test("private page and shared-account HTTP security lifecycle", async (t) => {
       assert.equal((await request(`/api/private-pages/${pageId}`)).status, 401);
       assert.equal((await request(`/api/private-pages/${pageId}`, member)).status, 404);
       assert.equal((await request(`/api/private-pages/${pageId}`, staff)).status, 404);
+      assert.equal((await request(`/api/private-pages/${pageId}`, staff, { headers: { "x-test-admin": "1" } })).status, 200, "Site administrators may open direct private links without joining the client");
       assert.equal((await request(`/api/private-pages/${pageId}?previewOrg=${orgB}`, staff)).status, 404);
       assert.equal((await request(`/api/private-pages/${pageId}?previewOrg=${orgA}`, member)).status, 404);
       const upload = async (kind: string, bytes: Buffer, filename: string, org = orgA) => request(
@@ -90,6 +92,10 @@ test("private page and shared-account HTTP security lifecycle", async (t) => {
       assert.equal((await write(`${admin}/pages/${pageId}`, { action: "review", revision: page.revision }, staff, "PATCH")).status, 200);
       assert.equal((await write(`${admin}/pages/${pageId}`, { action: "publish", revision: page.revision }, staff, "PATCH")).status, 200);
       const html = await request(`/api/private-pages/${pageId}/html`, member);
+      assert.equal((await request(`/api/private-pages/${pageId}/html`, staff, { headers: { "x-test-admin": "1" } })).status, 200);
+      const adminList = await request("/api/private-pages", staff, { headers: { "x-test-admin": "1" } });
+      assert.equal(adminList.status, 200);
+      assert.ok((await adminList.json() as { items: { id: string }[] }).items.some(p => p.id === pageId));
       assert.equal(html.status, 200);
       assert.match(html.headers.get("content-security-policy")!, /sandbox allow-scripts/);
       assert.match(html.headers.get("cache-control")!, /no-store/);
@@ -139,6 +145,21 @@ test("private page and shared-account HTTP security lifecycle", async (t) => {
       password = next.password;
       const fresh = await login(password); assert.equal(fresh.response.status, 200); cookie1 = fresh.cookie;
     });
+    await t.test("administrators can set passwords; invalid input cannot replace credentials", async () => {
+      for (const invalid of ["short", "", "é".repeat(40)]) {
+        assert.equal((await write(`${admin}/accounts/${accountId}/rotate`, { password: invalid })).status, 400);
+        assert.equal((await write(`${admin}/accounts`, { username: `invalid-${randomUUID()}`, password: invalid })).status, 400);
+      }
+      assert.equal((await sharedGet(`/api/private-pages/${pageId}`, cookie1)).status, 200);
+      const chosen = `Chosen-test-password-${randomUUID()}`;
+      const replaced = await write(`${admin}/accounts/${accountId}/rotate`, { password: chosen });
+      assert.equal(replaced.status, 200);
+      assert.equal((await replaced.json() as { password: string }).password, chosen);
+      assert.equal((await login(password)).response.status, 401);
+      assert.equal((await sharedGet(`/api/private-pages/${pageId}`, cookie1)).status, 401);
+      password = chosen;
+      const fresh = await login(password); assert.equal(fresh.response.status, 200); cookie1 = fresh.cookie;
+    });
     await t.test("inactive organizations, revoked roster membership, archive and disable fail closed", async () => {
       await pool.query("UPDATE client_organizations SET is_active=false WHERE id=$1", [orgA]);
       assert.equal((await sharedGet(`/api/private-pages/${pageId}`)).status, 401);
@@ -166,6 +187,9 @@ test("private page and shared-account HTTP security lifecycle", async (t) => {
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     speFileStorage.storeFile = originalStore; speFileStorage.getFile = originalGet;
+    await pool.query("DELETE FROM shared_login_attempts WHERE bucket_hash=ANY($1::text[])", [
+      [digest(`ip:fixture-${orgA}`), digest(`account:synthetic-${orgA}@example.invalid`)],
+    ]);
     await pool.query("DELETE FROM private_customer_assets WHERE page_id IN (SELECT id FROM private_customer_pages WHERE organization_id IN ($1,$2))", [orgA, orgB]);
     await pool.query("DELETE FROM private_customer_pages WHERE organization_id IN ($1,$2)", [orgA, orgB]);
     await pool.query("DELETE FROM shared_organization_accounts WHERE organization_id IN ($1,$2)", [orgA, orgB]);
