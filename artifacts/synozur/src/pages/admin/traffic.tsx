@@ -327,7 +327,7 @@ export default function AdminTraffic() {
           <div className="space-y-2 mb-6">
             {sel.localSlugs.includes(DEFAULT_SLUG) && (
               <p className="text-xs text-muted-foreground" data-testid="text-www-source-coverage">
-                WWW combines imported Wix history and current Synozur tracking. Transition-period totals are provisional pending confirmation of the overlapping coverage; no historical records have been removed.
+                WWW combines all recorded Wix history and current Synozur tracking within the selected dates, without a cutover filter. Source counts are combined, not deduplicated people.
               </p>
             )}
             {hasLocal && overviewQ.isError && <SourceStatus kind="error" testid="status-local-error" message="Local traffic could not be loaded; any displayed combined total is partial." onRetry={() => overviewQ.refetch()} />}

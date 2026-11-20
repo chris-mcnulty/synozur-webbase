@@ -89,7 +89,7 @@ export function AnnualSessions({
       </div>
       <div className="mt-2 space-y-2">
         <p className="text-xs text-muted-foreground" data-testid="annual-core-coverage">
-          WWW totals include both tracking sources. Transition-period coverage overlaps in the retained records; totals covering that period are provisional until the cutover is confirmed.
+          WWW totals include all recorded Wix and current Synozur sessions within the selected year, without a June 30 cutover filter. These are combined source counts, not deduplicated people.
         </p>
         {coreQ.isError && <SourceStatus kind="error" testid="status-annual-core-error" message="Core annual sessions could not be loaded." onRetry={() => coreQ.refetch()} />}
         {allQ.isError && <SourceStatus kind="error" testid="status-annual-all-error" message="Local annual sessions could not be loaded. The All properties total is partial if Orion visits are available." onRetry={() => allQ.refetch()} />}
