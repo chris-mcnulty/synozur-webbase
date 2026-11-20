@@ -19,4 +19,4 @@ Wix was WWW until midyear. Historical Wix traffic and current WWW tracking repre
 
 **Why:** The user explicitly corrected Core reporting that excluded the site's Wix history.
 
-**How to apply:** Group Wix history with current Synozur tracking under WWW/Core in default and annual reporting. Retain source provenance only for optional diagnostics. Check overlapping migration coverage before summing; the exact cutover date is not yet confirmed.
+**How to apply:** Group Wix history with current Synozur tracking under WWW/Core in default and annual reporting. Retain source provenance only for optional diagnostics. The user identified June 30 as the WWW cutover date. Check overlapping migration coverage before summing; a calendar date alone does not establish transition-day ownership or an exact timestamp.
