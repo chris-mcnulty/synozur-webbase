@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:orion-traffic": "node --experimental-test-module-mocks --import tsx --test src/lib/orionTraffic.test.ts src/routes/cms/orionTraffic.test.ts",
     "test:private-page-policy": "node --import tsx --test src/lib/privatePages/policy.test.ts",
     "test:private-pages": "node --import tsx --test src/lib/privatePages/policy.test.ts src/lib/privatePages/html.test.ts src/routes/privateCustomerPages.test.ts",
     "test:board": "node --experimental-test-module-mocks --import tsx --test src/routes/board.test.ts",

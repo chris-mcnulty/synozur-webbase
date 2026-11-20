@@ -68,6 +68,26 @@ tags:
   - name: CmsApiKeys
     description: Admin API key management for machine-to-machine access.
 paths:
+  /cms/traffic/orion:
+    get:
+      operationId: getCmsOrionTraffic
+      tags: [CMS Analytics]
+      summary: Read an app-wide Orion aggregate snapshot without importing traffic.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: refresh, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Orion snapshot with last successful fetch time and stale status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrionTrafficSnapshot"
+        "400": { description: Invalid reporting window }
+        "401": { description: Sign-in required }
+        "403": { description: Editor or administrator required }
+        "502": { description: Orion unavailable and no cached report exists }
   /auth/galaxy/login:
     post:
       operationId: loginGalaxy
@@ -5349,6 +5369,107 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    OrionTrafficSnapshot:
+      type: object
+      required: [data, fetchedAt, stale]
+      properties:
+        fetchedAt: { type: string, format: date-time }
+        stale: { type: boolean }
+        refreshError: { type: string }
+        data:
+          $ref: "#/components/schemas/OrionTrafficData"
+    OrionTrafficData:
+      type: object
+      required: [reportingVersion, totalVisits, from, to, bySection, byPage, byDate, byCountry, byDevice, byBrowser, activity]
+      properties:
+        reportingVersion: { type: integer }
+        totalVisits: { type: integer, minimum: 0 }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        bySection:
+          type: array
+          items:
+            type: object
+            required: [section, count]
+            properties:
+              section: { type: string }
+              count: { type: integer }
+        byPage:
+          type: array
+          items:
+            type: object
+            required: [page, count]
+            properties:
+              page: { type: string }
+              count: { type: integer }
+        byDate:
+          type: array
+          items: { $ref: "#/components/schemas/OrionTrafficDateCount" }
+        byCountry:
+          type: array
+          items:
+            type: object
+            required: [country, count]
+            properties:
+              country: { type: string }
+              count: { type: integer }
+        byDevice:
+          type: array
+          items:
+            type: object
+            required: [device, count]
+            properties:
+              device: { type: string }
+              count: { type: integer }
+        byBrowser:
+          type: array
+          items:
+            type: object
+            required: [browser, count]
+            properties:
+              browser: { type: string }
+              count: { type: integer }
+        activity:
+          $ref: "#/components/schemas/OrionTrafficActivity"
+    OrionTrafficDateCount:
+      type: object
+      required: [date, count]
+      properties:
+        date: { type: string }
+        count: { type: integer }
+    OrionTrafficActivity:
+      type: object
+      required: [totalEvents, byEvent, byResource, timeSeries, notes]
+      properties:
+        totalEvents: { type: integer, minimum: 0 }
+        byEvent:
+          type: array
+          items:
+            type: object
+            required: [event, source, count]
+            properties:
+              event: { type: string }
+              source: { type: string }
+              count: { type: integer }
+        byResource:
+          type: array
+          items:
+            type: object
+            required: [resourceType, resourceId, resourceName, count, byEvent]
+            properties:
+              resourceType: { type: string }
+              resourceId: { type: string }
+              resourceName: { type: string }
+              count: { type: integer }
+              byEvent:
+                type: object
+                additionalProperties: { type: integer }
+        timeSeries:
+          type: array
+          items: { $ref: "#/components/schemas/OrionTrafficDateCount" }
+        notes:
+          type: array
+          items: { type: string }
     PortalMessageInput:
       type: object
       required: [message, signature, quarterLabel, visible]

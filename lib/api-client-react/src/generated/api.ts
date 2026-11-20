@@ -102,6 +102,7 @@ import type {
   GetChapterAudioCostsParams,
   GetCmsAnalyticsOverviewParams,
   GetCmsBatchViewsParams,
+  GetCmsOrionTrafficParams,
   GetCmsPostAnalyticsParams,
   GetEventSchedule200,
   GetExperimentResultsResponse,
@@ -148,6 +149,7 @@ import type {
   MethodologyItemsResponse,
   ModerateCmsCommentBody,
   NotFoundResponse,
+  OrionTrafficSnapshot,
   PolarisBulkSyncCollateralResponse,
   PolarisCollateralLinkResponse,
   PolarisEpisode,
@@ -248,6 +250,103 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Read an app-wide Orion aggregate snapshot without importing traffic.
+ */
+export const getGetCmsOrionTrafficUrl = (params: GetCmsOrionTrafficParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/traffic/orion?${stringifiedParams}`
+    : `/api/cms/traffic/orion`;
+};
+
+export const getCmsOrionTraffic = async (
+  params: GetCmsOrionTrafficParams,
+  options?: RequestInit,
+): Promise<OrionTrafficSnapshot> => {
+  return customFetch<OrionTrafficSnapshot>(getGetCmsOrionTrafficUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCmsOrionTrafficQueryKey = (
+  params?: GetCmsOrionTrafficParams,
+) => {
+  return [`/api/cms/traffic/orion`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetCmsOrionTrafficQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCmsOrionTraffic>>,
+  TError = ErrorType<void>,
+>(
+  params: GetCmsOrionTrafficParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsOrionTraffic>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCmsOrionTrafficQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCmsOrionTraffic>>
+  > = ({ signal }) => getCmsOrionTraffic(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCmsOrionTraffic>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCmsOrionTrafficQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCmsOrionTraffic>>
+>;
+export type GetCmsOrionTrafficQueryError = ErrorType<void>;
+
+/**
+ * @summary Read an app-wide Orion aggregate snapshot without importing traffic.
+ */
+
+export function useGetCmsOrionTraffic<
+  TData = Awaited<ReturnType<typeof getCmsOrionTraffic>>,
+  TError = ErrorType<void>,
+>(
+  params: GetCmsOrionTrafficParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsOrionTraffic>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCmsOrionTrafficQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getLoginGalaxyUrl = () => {
   return `/api/auth/galaxy/login`;

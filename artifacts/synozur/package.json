@@ -12,6 +12,7 @@
     "test:artifact-path": "node --test lib/artifactPath.test.mjs",
     "test:experiments-bucket": "tsx --test src/lib/experiments-bucket.test.ts",
     "test:attribution": "tsx --test src/lib/attribution.test.ts",
+    "test:orion-traffic-window": "tsx --test src/lib/orion-traffic-window.test.ts",
     "test:event-jsonld": "tsx --test src/components/event-jsonld.test.ts",
     "test:seo-audit-config": "tsx --test src/pages/admin/marketing/seo-audit.test.ts",
     "test:polaris-meta-desc-guard": "tsx --test src/pages/admin/library/polaris-episode-meta-desc-guard.test.ts",

@@ -7,6 +7,95 @@
  */
 import * as zod from "zod";
 
+/**
+ * @summary Read an app-wide Orion aggregate snapshot without importing traffic.
+ */
+export const GetCmsOrionTrafficQueryParams = zod.object({
+  from: zod.date(),
+  to: zod.date(),
+  refresh: zod.coerce.boolean().optional(),
+});
+
+export const getCmsOrionTrafficResponseDataTotalVisitsMin = 0;
+
+export const getCmsOrionTrafficResponseDataActivityTotalEventsMin = 0;
+
+export const GetCmsOrionTrafficResponse = zod.object({
+  fetchedAt: zod.coerce.date(),
+  stale: zod.boolean(),
+  refreshError: zod.string().optional(),
+  data: zod.object({
+    reportingVersion: zod.number(),
+    totalVisits: zod.number().min(getCmsOrionTrafficResponseDataTotalVisitsMin),
+    from: zod.coerce.date(),
+    to: zod.coerce.date(),
+    bySection: zod.array(
+      zod.object({
+        section: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    byPage: zod.array(
+      zod.object({
+        page: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    byDate: zod.array(
+      zod.object({
+        date: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    byCountry: zod.array(
+      zod.object({
+        country: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    byDevice: zod.array(
+      zod.object({
+        device: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    byBrowser: zod.array(
+      zod.object({
+        browser: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    activity: zod.object({
+      totalEvents: zod
+        .number()
+        .min(getCmsOrionTrafficResponseDataActivityTotalEventsMin),
+      byEvent: zod.array(
+        zod.object({
+          event: zod.string(),
+          source: zod.string(),
+          count: zod.number(),
+        }),
+      ),
+      byResource: zod.array(
+        zod.object({
+          resourceType: zod.string(),
+          resourceId: zod.string(),
+          resourceName: zod.string(),
+          count: zod.number(),
+          byEvent: zod.record(zod.string(), zod.number()),
+        }),
+      ),
+      timeSeries: zod.array(
+        zod.object({
+          date: zod.string(),
+          count: zod.number(),
+        }),
+      ),
+      notes: zod.array(zod.string()),
+    }),
+  }),
+});
+
 export const LoginGalaxyBody = zod.object({
   username: zod.string(),
   password: zod.string(),

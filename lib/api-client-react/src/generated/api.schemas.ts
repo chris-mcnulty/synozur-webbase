@@ -5,6 +5,85 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface OrionTrafficDateCount {
+  date: string;
+  count: number;
+}
+
+export type OrionTrafficActivityByEventItem = {
+  event: string;
+  source: string;
+  count: number;
+};
+
+export type OrionTrafficActivityByResourceItemByEvent = {
+  [key: string]: number;
+};
+
+export type OrionTrafficActivityByResourceItem = {
+  resourceType: string;
+  resourceId: string;
+  resourceName: string;
+  count: number;
+  byEvent: OrionTrafficActivityByResourceItemByEvent;
+};
+
+export interface OrionTrafficActivity {
+  /** @minimum 0 */
+  totalEvents: number;
+  byEvent: OrionTrafficActivityByEventItem[];
+  byResource: OrionTrafficActivityByResourceItem[];
+  timeSeries: OrionTrafficDateCount[];
+  notes: string[];
+}
+
+export type OrionTrafficDataBySectionItem = {
+  section: string;
+  count: number;
+};
+
+export type OrionTrafficDataByPageItem = {
+  page: string;
+  count: number;
+};
+
+export type OrionTrafficDataByCountryItem = {
+  country: string;
+  count: number;
+};
+
+export type OrionTrafficDataByDeviceItem = {
+  device: string;
+  count: number;
+};
+
+export type OrionTrafficDataByBrowserItem = {
+  browser: string;
+  count: number;
+};
+
+export interface OrionTrafficData {
+  reportingVersion: number;
+  /** @minimum 0 */
+  totalVisits: number;
+  from: string;
+  to: string;
+  bySection: OrionTrafficDataBySectionItem[];
+  byPage: OrionTrafficDataByPageItem[];
+  byDate: OrionTrafficDateCount[];
+  byCountry: OrionTrafficDataByCountryItem[];
+  byDevice: OrionTrafficDataByDeviceItem[];
+  byBrowser: OrionTrafficDataByBrowserItem[];
+  activity: OrionTrafficActivity;
+}
+
+export interface OrionTrafficSnapshot {
+  fetchedAt: string;
+  stale: boolean;
+  refreshError?: string;
+  data: OrionTrafficData;
+}
+
 export interface PortalMessageInput {
   /** @maxLength 10000 */
   message: string;
@@ -4418,6 +4497,12 @@ export type NotFoundResponse = ErrorEnvelope;
  * Bad request
  */
 export type BadRequestResponse = ErrorEnvelope;
+
+export type GetCmsOrionTrafficParams = {
+  from: string;
+  to: string;
+  refresh?: boolean;
+};
 
 export type LoginGalaxyBody = {
   username: string;

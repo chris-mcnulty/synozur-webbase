@@ -1,4 +1,5 @@
 import { logger } from "./logger";
+import { createOrionTrafficReader } from "./orionTraffic";
 
 const ORION_BASE = (process.env.ORION_BASE_URL ?? "").replace(/\/$/, "");
 const ORION_KEY = process.env.ORION_PORTAL_KEY ?? "";
@@ -38,14 +39,14 @@ export class OrionError extends Error {
 
 async function orionFetch<T>(
   path: string,
-  domain: string,
+  domain: string | null,
   params?: Record<string, string>,
 ): Promise<T> {
   if (!ORION_BASE || !ORION_KEY) {
     throw new OrionError(503, "Orion integration not configured (ORION_BASE_URL / ORION_PORTAL_KEY missing)");
   }
   const url = new URL(`${ORION_BASE}${path}`);
-  url.searchParams.set("domain", domain);
+  if (domain) url.searchParams.set("domain", domain);
   if (params) {
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   }
@@ -118,7 +119,12 @@ export interface OrionTrafficStats {
 // ── TTLs ────────────────────────────────────────────────────────────────────
 
 const TTL = 5 * 60_000;           // 5 min for list endpoints
-const TTL_TRAFFIC = 60 * 60_000;  // 1 hr for traffic (polled separately)
+// App-wide traffic explicitly omits the tenant-domain filter. Its read-through
+// cache is separate from the legacy customer portal proxy.
+export const readOrionTraffic = createOrionTrafficReader((from, to) =>
+  orionFetch<unknown>("/api/galaxy/v1/portal/traffic", null, { from, to }),
+);
+const TTL_TRAFFIC = 60 * 60_000;
 
 // ── Public API — every call takes an explicit domain ────────────────────────
 //

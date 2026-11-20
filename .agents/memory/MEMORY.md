@@ -29,3 +29,4 @@
 - [Board release policy](board-release-policy.md) — preannouncement content stays admin-only; importing content or redeploying never authorizes publication.
 - [Crawler request semantics](crawler-test-request-semantics.md) — a synthetic crawler User-Agent on fetch still carries browser-like headers; test raw HTTP separately.
 - [Private customer content](private-customer-content.md) — confidential SPE-only pages, explicit organization previews, scoped shared identities, and uploaded-script isolation.
+- [Orion reporting semantics](orion-reporting-semantics.md) — read aggregate snapshots without accumulation; visits, activity, and unique people are not interchangeable.

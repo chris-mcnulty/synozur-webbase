@@ -22,6 +22,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { OrionTrafficPanel } from "@/components/admin/OrionTrafficPanel";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { Button } from "@/components/ui/button";
@@ -415,7 +416,15 @@ export default function AdminTraffic() {
             </div>
           </Card>
 
-          {/* KPIs */}
+          <OrionTrafficPanel rangePreset={rangePreset} enabled={enabled} />
+
+          {/* KPIs — locally stored traffic only (not combined with Orion) */}
+          <div className="mb-2" data-testid="text-local-kpi-label">
+            <div className="text-sm font-medium">Locally stored traffic</div>
+            <div className="text-xs text-muted-foreground">
+              Synozur first-party and imported properties stored in this database, using all filters above. Not combined with the Orion snapshot.
+            </div>
+          </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <Stat label="Pageviews" value={overviewQ.data?.totals.pageviews ?? 0} icon={Activity} />
             <Stat label="Sessions" value={overviewQ.data?.totals.sessions ?? 0} icon={Users} />
