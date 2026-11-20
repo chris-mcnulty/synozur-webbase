@@ -4,12 +4,18 @@
  * storage and never summed into local measures.
  */
 export const DEFAULT_SLUG = "synozur";
+/** One website across two tracking platforms, not two business properties. */
+export const CORE_SOURCE_SLUGS = ["synozur", "wix-legacy"];
 export const ORION_SLUG = "orion";
 export const ALL_SLUG = "all";
 
+export function logicalPropertySlug(slug: string): string {
+  return CORE_SOURCE_SLUGS.includes(slug) ? DEFAULT_SLUG : slug;
+}
+
 export function parseSelection(raw: string | null | undefined): string[] {
   if (!raw) return [DEFAULT_SLUG];
-  const parts = [...new Set(raw.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean))];
+  const parts = [...new Set(raw.split(",").map((s) => logicalPropertySlug(s.trim().toLowerCase())).filter(Boolean))];
   if (parts.length === 0) return [DEFAULT_SLUG];
   if (parts.includes(ALL_SLUG)) return [ALL_SLUG];
   return parts;
@@ -41,11 +47,47 @@ export interface ResolvedSelection {
 
 export function resolveSelection(sel: string[], knownLocalSlugs: string[]): ResolvedSelection {
   const isAll = sel.includes(ALL_SLUG);
-  const known = knownLocalSlugs.filter((s) => s !== ORION_SLUG && s !== ALL_SLUG);
+  const known = [...new Set([...CORE_SOURCE_SLUGS, ...knownLocalSlugs])].filter((s) => s !== ORION_SLUG && s !== ALL_SLUG);
   const includeOrion = isAll || sel.includes(ORION_SLUG);
-  const localSlugs = isAll ? known : sel.filter((s) => s !== ORION_SLUG && s !== ALL_SLUG);
+  const localSlugs = isAll ? known : [...new Set(
+    sel.filter((s) => s !== ORION_SLUG && s !== ALL_SLUG)
+      .flatMap((s) => logicalPropertySlug(s) === DEFAULT_SLUG ? CORE_SOURCE_SLUGS : [s]),
+  )];
   const mode = includeOrion ? (localSlugs.length ? "mixed" : "orion") : "local";
   return { isAll, includeOrion, localSlugs, mode };
+}
+
+interface SourcePropertyRow {
+  slug: string;
+  sessions: number;
+  uniqueVisitors: number;
+  pageviews: number;
+}
+
+/** Keep source rows for diagnostics; never add two source-level unique counts. */
+export function groupPropertyRows(rows: SourcePropertyRow[]) {
+  const grouped = new Map<string, {
+    slug: string; sessions: number; uniqueVisitors: number | null;
+    pageviews: number; sources: SourcePropertyRow[];
+  }>();
+  for (const row of rows) {
+    if (row.slug === ORION_SLUG) continue;
+    const slug = logicalPropertySlug(row.slug);
+    const group = grouped.get(slug);
+    if (group) {
+      group.sessions += row.sessions;
+      group.pageviews += row.pageviews;
+      group.uniqueVisitors = null;
+      group.sources.push(row);
+    } else {
+      grouped.set(slug, { ...row, slug, sources: [row] });
+    }
+  }
+  return [...grouped.values()].sort((a, b) => {
+    if (a.slug === DEFAULT_SLUG) return -1;
+    if (b.slug === DEFAULT_SLUG) return 1;
+    return b.sessions - a.sessions;
+  });
 }
 
 export interface DimRow { key: string; local: number | null; orion: number | null }

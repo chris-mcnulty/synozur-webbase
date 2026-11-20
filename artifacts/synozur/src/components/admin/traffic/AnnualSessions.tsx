@@ -4,7 +4,7 @@ import { CalendarRange } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trafficApi } from "@/lib/traffic-api";
 import { useOrionSnapshot, useTrafficWindow } from "@/hooks/use-orion-snapshot";
-import { annualWindow, combineSessions, DEFAULT_SLUG } from "@/lib/traffic-selection";
+import { annualWindow, combineSessions, CORE_SOURCE_SLUGS } from "@/lib/traffic-selection";
 import { Metric, SourceStatus, SESSIONS_DEFINITION } from "./TrafficParts";
 
 /**
@@ -22,8 +22,8 @@ export function AnnualSessions({
   const base = { from: win.from, to: win.to, includeBots: "false" as const };
 
   const coreQ = useQuery({
-    queryKey: ["traffic-annual", "core", win],
-    queryFn: () => trafficApi.overview({ ...base, propertySlugs: [DEFAULT_SLUG] }),
+    queryKey: ["traffic-annual", "core", win, CORE_SOURCE_SLUGS],
+    queryFn: () => trafficApi.overview({ ...base, propertySlugs: CORE_SOURCE_SLUGS }),
     enabled,
     refetchInterval: enabled ? 60000 : false,
   });
@@ -71,7 +71,7 @@ export function AnnualSessions({
           label={`Core (WWW) sessions, ${yearLabel}`}
           value={coreQ.isError ? "Unavailable" : coreQ.data?.totals.sessions ?? null}
           loading={coreQ.isLoading}
-          note="synozur.com first-party sessions only."
+          note="WWW sessions: imported Wix history plus current Synozur tracking."
         />
         <Metric
           tone="hero"
@@ -88,6 +88,9 @@ export function AnnualSessions({
         />
       </div>
       <div className="mt-2 space-y-2">
+        <p className="text-xs text-muted-foreground" data-testid="annual-core-coverage">
+          WWW totals include both tracking sources. Transition-period coverage overlaps in the retained records; totals covering that period are provisional until the cutover is confirmed.
+        </p>
         {coreQ.isError && <SourceStatus kind="error" testid="status-annual-core-error" message="Core annual sessions could not be loaded." onRetry={() => coreQ.refetch()} />}
         {allQ.isError && <SourceStatus kind="error" testid="status-annual-all-error" message="Local annual sessions could not be loaded. The All properties total is partial if Orion visits are available." onRetry={() => allQ.refetch()} />}
         {propertyListError && <SourceStatus kind="error" testid="status-annual-properties-error" message="Property coverage could not be loaded; All properties sessions are unavailable." />}

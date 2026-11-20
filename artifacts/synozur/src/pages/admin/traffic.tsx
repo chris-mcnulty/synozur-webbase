@@ -19,6 +19,7 @@ import { useOrionSnapshot, useTrafficWindow } from "@/hooks/use-orion-snapshot";
 import {
   ALL_SLUG, DEFAULT_SLUG, ORION_SLUG, parseSelection, serializeSelection, toggleSelection,
   resolveSelection, mergeDimension, mergeDaily, withCombinedSessions, combineSessions,
+  CORE_SOURCE_SLUGS, groupPropertyRows,
 } from "@/lib/traffic-selection";
 import { AnnualSessions } from "@/components/admin/traffic/AnnualSessions";
 import {
@@ -79,7 +80,10 @@ export default function AdminTraffic() {
     () => (propsListQ.data?.items ?? []).filter((p) => p.slug !== ORION_SLUG),
     [propsListQ.data],
   );
-  const knownLocalSlugs = useMemo(() => localProps.map((p) => p.slug), [localProps]);
+  const knownLocalSlugs = useMemo(
+    () => resolveSelection([ALL_SLUG], localProps.map((p) => p.slug)).localSlugs,
+    [localProps],
+  );
   const propsReady = propsListQ.isSuccess;
   const sel = useMemo(() => resolveSelection(selection, knownLocalSlugs), [selection, knownLocalSlugs]);
   const hasLocal = sel.localSlugs.length > 0;
@@ -111,6 +115,7 @@ export default function AdminTraffic() {
     queryFn: () => trafficApi.byProperty(byPropertyFilters),
     enabled: enabled && propsReady && knownLocalSlugs.length > 0,
   });
+  const propertyRows = useMemo(() => groupPropertyRows(byPropertyQ.data?.items ?? []), [byPropertyQ.data]);
   const seriesQ = useQuery({ queryKey: ["traffic-series", filters], queryFn: () => trafficApi.timeseries(filters), enabled: localEnabled });
   const pagesQ = useQuery({ queryKey: ["traffic-pages", filters], queryFn: () => trafficApi.pages(filters), enabled: localEnabled });
   const sourcesQ = useQuery({ queryKey: ["traffic-sources", filters], queryFn: () => trafficApi.sources(filters), enabled: localEnabled });
@@ -222,7 +227,7 @@ export default function AdminTraffic() {
                       <span className="flex-1 truncate">Orion</span>
                       <span className="text-[10px] text-muted-foreground ml-1">live snapshot</span>
                     </DropdownMenuCheckboxItem>
-                    {localProps.filter((p) => p.slug !== DEFAULT_SLUG).map((p) => (
+                    {localProps.filter((p) => !CORE_SOURCE_SLUGS.includes(p.slug)).map((p) => (
                       <DropdownMenuCheckboxItem
                         key={p.id}
                         checked={!sel.isAll && selection.includes(p.slug)}
@@ -320,6 +325,11 @@ export default function AdminTraffic() {
             <Metric testid="stat-countries" label="Countries" value={(hasLocal && countriesQ.data) || od ? countryRows.length : null} loading={dimLoading} note={showOrion && hasLocal ? "Distinct reported countries; partial if a source is unavailable" : undefined} />
           </div>
           <div className="space-y-2 mb-6">
+            {sel.localSlugs.includes(DEFAULT_SLUG) && (
+              <p className="text-xs text-muted-foreground" data-testid="text-www-source-coverage">
+                WWW combines imported Wix history and current Synozur tracking. Transition-period totals are provisional pending confirmation of the overlapping coverage; no historical records have been removed.
+              </p>
+            )}
             {hasLocal && overviewQ.isError && <SourceStatus kind="error" testid="status-local-error" message="Local traffic could not be loaded; any displayed combined total is partial." onRetry={() => overviewQ.refetch()} />}
             {showOrion && orion.isError && (
               <SourceStatus kind="partial" testid="status-orion-partial" message={hasLocal ? "Orion snapshot unavailable: sessions and breakdowns are partial (local only)." : "Orion snapshot unavailable; no counts shown."} onRetry={orion.retry} />
@@ -360,14 +370,27 @@ export default function AdminTraffic() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {(byPropertyQ.data?.items ?? []).filter((r) => r.slug !== ORION_SLUG).map((row) => (
+                    {propertyRows.map((row) => (
                       <tr key={row.slug} data-testid={`row-by-property-${row.slug}`}>
                         <td className="py-2">
                           <div className="font-medium">{nameOf(row.slug)}</div>
-                          <div className="text-xs text-muted-foreground font-mono">{row.slug}</div>
+                          {row.slug === DEFAULT_SLUG ? (
+                            <details className="text-xs text-muted-foreground">
+                              <summary className="cursor-pointer">Tracking-source breakdown</summary>
+                              <ul className="mt-1 space-y-1">
+                                {row.sources.map((source) => (
+                                  <li key={source.slug}>
+                                    {source.slug === "wix-legacy" ? "Wix history" : "Current tracking"}: {source.sessions.toLocaleString()} sessions
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          ) : <div className="text-xs text-muted-foreground font-mono">{row.slug}</div>}
                         </td>
                         <td className="py-2 text-right">{row.sessions.toLocaleString()}</td>
-                        <td className="py-2 text-right">{row.uniqueVisitors.toLocaleString()}</td>
+                        <td className="py-2 text-right" title={row.uniqueVisitors === null ? "Source-level unique counts cannot be added without cross-source visitor identities." : undefined}>
+                          {row.uniqueVisitors?.toLocaleString() ?? "n/a"}
+                        </td>
                         <td className="py-2 text-right">{row.pageviews.toLocaleString()}</td>
                       </tr>
                     ))}

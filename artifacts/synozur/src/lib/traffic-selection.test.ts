@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   parseSelection, serializeSelection, toggleSelection, resolveSelection,
   mergeDimension, mergeDaily, applySnapshot,
+  CORE_SOURCE_SLUGS, groupPropertyRows,
 } from "./traffic-selection";
 
 test("default selection is WWW (synozur) and serializes to no param", () => {
@@ -29,6 +30,38 @@ test("orion never reaches local queries, including All", () => {
   assert.deepEqual(only.localSlugs, []);
   assert.equal(only.mode, "orion");
   assert.equal(resolveSelection(["synozur"], known).mode, "local");
+});
+
+test("WWW includes Wix history by default, and old Wix URLs resolve to WWW", () => {
+  assert.deepEqual(resolveSelection(parseSelection(null), []).localSlugs, CORE_SOURCE_SLUGS);
+  assert.deepEqual(parseSelection("wix-legacy"), ["synozur"]);
+  assert.deepEqual(parseSelection("synozur,wix-legacy,orion"), ["synozur", "orion"]);
+  assert.equal(serializeSelection(parseSelection("wix-legacy")), null);
+  assert.deepEqual(resolveSelection(["synozur", "wix-legacy"], []).localSlugs, CORE_SOURCE_SLUGS);
+});
+
+test("All includes WWW sources once, and Orion-only does not include either", () => {
+  assert.deepEqual(resolveSelection(["all"], ["synozur", "wix-legacy", "orion", "nebula", "wix-legacy"]).localSlugs,
+    ["synozur", "wix-legacy", "nebula"]);
+  assert.deepEqual(resolveSelection(["orion"], CORE_SOURCE_SLUGS).localSlugs, []);
+  assert.deepEqual(resolveSelection(["synozur", "orion"], []).localSlugs, CORE_SOURCE_SLUGS);
+});
+
+test("portfolio groups Wix and current tracking without inventing unique people", () => {
+  const rows = groupPropertyRows([
+    { slug: "wix-legacy", sessions: 100, pageviews: 150, uniqueVisitors: 80 },
+    { slug: "synozur", sessions: 50, pageviews: 90, uniqueVisitors: 45 },
+    { slug: "nebula", sessions: 20, pageviews: 30, uniqueVisitors: 10 },
+    { slug: "orion", sessions: 999, pageviews: 999, uniqueVisitors: 999 },
+  ]);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0]!.slug, "synozur");
+  assert.equal(rows[0]!.sessions, 150);
+  assert.equal(rows[0]!.pageviews, 240);
+  assert.equal(rows[0]!.uniqueVisitors, null);
+  assert.equal(rows[0]!.sources.length, 2);
+  assert.equal(rows[1]!.uniqueVisitors, 10);
+  assert.equal(groupPropertyRows([{ slug: "wix-legacy", sessions: 100, pageviews: 150, uniqueVisitors: 80 }])[0]!.slug, "synozur");
 });
 
 test("mixed dimensions keep units separate and do not zero-fill unavailable sources", () => {
