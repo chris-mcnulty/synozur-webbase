@@ -14,3 +14,9 @@ Annual sessions for Core and All properties are primary marketing metrics. The u
 **Why:** The user tracks annual Core and All sessions and wants a unified marketing report rather than a separate Orion dashboard.
 
 **How to apply:** Include Orion's authoritative visit total once in the marketing Sessions measure, with a brief definition. Do not substitute activity counts, imply cross-property unique people, or hide failed/stale coverage behind a complete-looking total. Keep unavailable duration and unique-user metrics distinct.
+
+Wix was WWW until midyear. Historical Wix traffic and current WWW tracking represent the same Core website, not separate business properties.
+
+**Why:** The user explicitly corrected Core reporting that excluded the site's Wix history.
+
+**How to apply:** Group Wix history with current Synozur tracking under WWW/Core in default and annual reporting. Retain source provenance only for optional diagnostics. Check overlapping migration coverage before summing; the exact cutover date is not yet confirmed.
