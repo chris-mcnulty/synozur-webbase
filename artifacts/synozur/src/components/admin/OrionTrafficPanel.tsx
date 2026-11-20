@@ -1,16 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMemo, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw, Orbit } from "lucide-react";
-import {
-  useGetCmsOrionTraffic,
-  getGetCmsOrionTrafficQueryKey,
-  getCmsOrionTraffic,
-  type OrionTrafficSnapshot,
-} from "@workspace/api-client-react";
-import { Card } from "@/components/ui/card";
+import type { OrionTrafficSnapshot } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { computeOrionWindow, type OrionRangePreset } from "@/lib/orion-traffic-window";
+import type { OrionRangePreset } from "@/lib/orion-traffic-window";
+import type { OrionSnapshotState } from "@/hooks/use-orion-snapshot";
 
 const PRESET_LABELS: Record<OrionRangePreset, string> = {
   "7": "Last 7 days",
@@ -69,10 +63,6 @@ function sectionLabel(s: string) {
   const k = s.toLowerCase();
   if (k === "signup" || k === "sign-up" || k === "sign_up") return "Authentication (legacy signup)";
   return humanize(s);
-}
-
-function utcDayKey(now: Date) {
-  return now.toISOString().slice(0, 10);
 }
 
 function fmtDate(iso: string) {
@@ -140,66 +130,27 @@ function Block({ title, sub, children }: { title: string; sub?: string; children
 
 export function OrionTrafficPanel({
   rangePreset,
-  enabled,
+  orion,
 }: {
   rangePreset: OrionRangePreset;
-  enabled: boolean;
+  orion: OrionSnapshotState;
 }) {
-  const queryClient = useQueryClient();
-  const [dayKey, setDayKey] = useState(() => utcDayKey(new Date()));
-
-  // Roll the window over at the next UTC midnight.
-  useEffect(() => {
-    const now = new Date();
-    const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 1);
-    const t = window.setTimeout(() => setDayKey(utcDayKey(new Date())), Math.max(1000, next - now.getTime()));
-    return () => window.clearTimeout(t);
-  }, [dayKey]);
-
-  const params = useMemo(
-    () => computeOrionWindow(rangePreset, new Date(`${dayKey}T12:00:00Z`)),
-    [rangePreset, dayKey],
-  );
-  const queryKey = useMemo(() => getGetCmsOrionTrafficQueryKey(params), [params]);
-
-  const q = useGetCmsOrionTraffic(params, {
-    query: { queryKey, enabled, refetchInterval: 60000, staleTime: 0, retry: 1 },
-  });
-
-  const [refreshing, setRefreshing] = useState(false);
-  const [manualError, setManualError] = useState<string | null>(null);
-
-  useEffect(() => setManualError(null), [queryKey, q.data?.fetchedAt]);
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    setManualError(null);
-    try {
-      const result = await getCmsOrionTraffic({ ...params, refresh: true });
-      queryClient.setQueryData<OrionTrafficSnapshot>(queryKey, result);
-    } catch (e) {
-      setManualError(e instanceof Error ? e.message : "Refresh request failed");
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
-  const snap = q.data;
+  const { params, enabled, snap, isStale, manualError, bgError, refreshing } = orion;
   const data = snap?.data;
-  const bgError = q.isError && !!snap;
-  const isStale = !!snap && (snap.stale || !!snap.refreshError || !!manualError || bgError);
+  const handleRefresh = orion.refresh;
+  const q = { isLoading: orion.isLoading, refetch: orion.retry };
 
   return (
-    <Card className="p-5 mb-6" data-testid="card-orion-traffic" aria-labelledby="orion-heading">
+    <div className="pt-2" data-testid="card-orion-traffic" aria-labelledby="orion-heading">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
           <h2 id="orion-heading" className="text-sm font-medium flex items-center gap-2">
-            <Orbit className="h-4 w-4 text-primary" aria-hidden /> Orion — app-wide snapshot
+            <Orbit className="h-4 w-4 text-primary" aria-hidden /> Orion detail — app-wide snapshot
           </h2>
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
-            Read-only, authoritative report fetched from Orion. Not stored locally and not added to
-            the local totals below. Only the Range filter applies; property, audience, page type and
-            device filters do not affect this panel.
+            Read-only, authoritative snapshot fetched from Orion and never stored locally. Its recorded
+            visits are counted once in the Sessions totals above. Only the Range filter applies here;
+            audience, page type and device filters are local-only.
           </p>
         </div>
         <Button
@@ -278,7 +229,7 @@ export function OrionTrafficPanel({
           <OrionBody snap={snap!} />
         )}
       </div>
-    </Card>
+    </div>
   );
 }
 

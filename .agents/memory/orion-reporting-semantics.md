@@ -8,3 +8,9 @@ Treat Orion as the authoritative source of its traffic and activity. Central rep
 **Why:** The reporting feed supplies aggregate visits and activity, not stable individual pageview IDs or cross-app visitor identities. Repeated pulls and historical reconstruction must not inflate central totals. Activity events and section/resource breakdowns are dimensions of the report, not additional pageviews.
 
 **How to apply:** Before combining Orion with another traffic feed, establish non-overlapping coverage and compatible definitions. Do not sum legacy activity aliases with newer activity breakdowns, label authentication-page visits as registrations, or call summed app visits/sessions unique people. Preserve the distinction between retained-record history and browser activity available only since expanded tracking.
+
+Annual sessions for Core and All properties are primary marketing metrics. The user explicitly approved Orion visits as sessions for this reporting purpose: “visits are fine as sessions.” WWW should remain the hero and default property; Orion belongs in the shared property selector, with its detailed activity available without dominating the overview.
+
+**Why:** The user tracks annual Core and All sessions and wants a unified marketing report rather than a separate Orion dashboard.
+
+**How to apply:** Include Orion's authoritative visit total once in the marketing Sessions measure, with a brief definition. Do not substitute activity counts, imply cross-property unique people, or hide failed/stale coverage behind a complete-looking total. Keep unavailable duration and unique-user metrics distinct.
