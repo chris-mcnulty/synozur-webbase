@@ -1,3 +1,4 @@
+import { useBoardNav } from "@/hooks/use-board-nav";
 import { Link, useLocation } from "wouter";
 import { Menu, X, Search, LayoutDashboard, LogOut, Loader2 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, FormEvent } from "react";
@@ -88,6 +89,7 @@ const PORTAL_NAV: PortalNavEntry[] = [
     aliases: ["/projects"],
   },
   { href: "/outcomes", label: "Outcomes" },
+  { href: "/pages", label: "Private pages" },
   {
     href: "/resources",
     label: "Resources",
@@ -102,6 +104,8 @@ function isPortalNavActive(entry: PortalNavEntry, location: string): boolean {
     (a) => location === a || location.startsWith(`${a}/`),
   );
 }
+
+const SHARED_NAV: PortalNavEntry[] = [{ href: "/pages", label: "Private pages" }, { href: "/documents", label: "Documents" }];
 
 function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
@@ -155,7 +159,7 @@ function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promis
             {user.displayName && <div className="font-medium text-sm truncate">{user.displayName}</div>}
             {user.email && <div className="text-xs text-muted-foreground truncate">{user.email}</div>}
           </div>
-          {user.roles.length > 0 && (
+          {user.roles.length > 0 && user.authProvider !== "shared_org" && (
             <a href="/admin" role="menuitem" onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-muted transition-colors">
               <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
@@ -174,8 +178,12 @@ function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promis
 }
 
 export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: boolean } = {}) {
+  const showBoard = useBoardNav();
+  const primaryNav = showBoard ? [...PRIMARY_NAV, { name: "Board", href: "/board" }] : PRIMARY_NAV;
   const { user, signOut } = useAuth();
   const [location] = useLocation();
+  const isShared = user?.authProvider === "shared_org";
+  const portalNav = isShared ? SHARED_NAV : PORTAL_NAV;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -274,7 +282,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
 
           {/* Left: App switcher + color logo (logo → main site) */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <SynozurAppSwitcher currentApp="galaxy" />
+            {!isShared && <SynozurAppSwitcher currentApp="galaxy" />}
             <a href="/" className="flex items-center transition-opacity hover:opacity-80" aria-label="The Synozur Alliance — main site">
               <img
                 src={LOGO_COLOR_URL}
@@ -288,7 +296,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
 
           {/* Center: Primary nav (desktop) */}
           <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
-            {PRIMARY_NAV.map((link) => (
+            {primaryNav.map((link) => (
               <a
                 key={link.name}
                 href={link.href}
@@ -358,7 +366,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
 
               {/* Primary (main site) */}
               <div className="flex flex-col gap-1">
-                {PRIMARY_NAV.map((link) => (
+                {primaryNav.map((link) => (
                   <a
                     key={link.name}
                     href={link.href}
@@ -381,7 +389,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                   <p className="px-3 pb-1 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
                     Galaxy Portal
                   </p>
-                  {PORTAL_NAV.map((n) => {
+                  {portalNav.map((n) => {
                     const active = isPortalNavActive(n, location);
                     return (
                       <Link key={n.href} href={n.href}
@@ -402,7 +410,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                     data-testid="button-sign-out"
                   >
                     <LogOut className="h-4 w-4" />
-                    Sign out ({user.email ?? user.displayName})
+                    Sign out{isShared ? "" : ` (${user.email ?? user.displayName})`}
                   </button>
                 </div>
               )}
@@ -416,7 +424,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
         <div className="container mx-auto px-4 md:px-6 h-10 flex items-center gap-1">
           <span className="text-xs text-muted-foreground font-medium mr-3 hidden sm:inline">Galaxy Portal</span>
           <div className="flex items-center gap-1">
-            {PORTAL_NAV.map((n) => {
+            {portalNav.map((n) => {
               const active = isPortalNavActive(n, location);
               return (
                 <Link
@@ -430,7 +438,10 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
               );
             })}
           </div>
-          {user?.email && (
+          {isShared && (
+            <span className="ml-auto text-xs text-amber-600 dark:text-amber-400 hidden sm:inline">Shared organization access, read-only</span>
+          )}
+          {!isShared && user?.email && (
             <span className="ml-auto text-xs text-muted-foreground hidden sm:inline truncate max-w-[200px]">
               {user.email}
             </span>

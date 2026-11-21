@@ -1,3 +1,4 @@
+import { boardIsPublic, boardRoster } from "./board";
 /**
  * Shared OG (Open Graph) data resolver.
  *
@@ -425,6 +426,21 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
   };
 
   const clean = pathname.replace(/\/+$/, "") || "/";
+  if (/^\/board(?:\/|$)/i.test(clean)) {
+    // This resolver is also used by unauthenticated exports and social tools.
+    // Never accept an admin-preview override here.
+    if (!await boardIsPublic()) return { ...fallback, title: "Not found", description: "Page not found." };
+    const slug = clean.split("/")[2];
+    const person = slug ? (await boardRoster()).find(p => p.slug === decodeURIComponent(slug)) : null;
+    if (slug && !person) return { ...fallback, title: "Not found", description: "Page not found." };
+    return {
+      ...fallback,
+      title: person ? `${person.name} — Board of Advisors | ${SITE_NAME}` : `Board of Advisors | ${SITE_NAME}`,
+      description: person ? (person.shortDescription || `${person.name} — Board of Advisors.`).replace(/<[^>]*>/g, "").slice(0, 300) : "Meet the Board of Advisors of The Synozur Alliance.",
+      image: ogImageVariant(absUrl(person?.imageUrl, origin), origin) ?? fallback.image,
+      ogType: person ? "article" : "website",
+    };
+  }
   const parts = clean.replace(/^\//, "").split("/");
   const section = parts[0] ?? "";
   const slug = parts[1] ?? "";

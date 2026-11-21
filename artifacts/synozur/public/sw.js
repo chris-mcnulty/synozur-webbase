@@ -29,7 +29,7 @@
 // Bumping this string is what invalidates old caches on a new deploy.
 // The postbuild script also appends the build's content hash so each deploy
 // gets a unique cache name even if we forget to bump this.
-const CACHE_VERSION = "synozur-v1";
+const CACHE_VERSION = "synozur-v2";
 const CACHE_NAME = `synozur-shell-${CACHE_VERSION}-__BUILD_ID__`;
 const OFFLINE_URL = "/offline.html";
 
@@ -131,6 +131,8 @@ self.addEventListener("fetch", (event) => {
   // server and must never be cached or short-circuited by the SW.
   if (
     url.pathname.startsWith("/api/") ||
+    url.pathname === "/board" ||
+    url.pathname.startsWith("/board/") ||
     url.pathname.startsWith("/oauth/") ||
     url.pathname.startsWith("/.well-known/")
   ) {
@@ -174,7 +176,8 @@ async function handleAsset(request) {
   const networkFetch = fetch(request)
     .then((response) => {
       // Only cache successful, basic (same-origin, non-opaque) responses.
-      if (response && response.ok && response.type === "basic") {
+      if (response && response.ok && response.type === "basic" &&
+          !/\bno-store\b|\bprivate\b/i.test(response.headers.get("cache-control") || "")) {
         cache.put(request, response.clone()).catch(() => {});
       }
       return response;

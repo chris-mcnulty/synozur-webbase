@@ -1,3 +1,4 @@
+import { boardIsPublic, boardRoster } from "./board";
 /**
  * Resolve the publish status of a public artifact URL.
  *
@@ -57,6 +58,7 @@ const ARTIFACT_SECTIONS = new Set([
 
 export function isArtifactPath(pathname: string): boolean {
   const clean = pathname.replace(/\/+$/, "") || "/";
+  if (/^\/board(?:\/|$)/i.test(clean)) return true;
   const parts = clean.replace(/^\//, "").split("/");
   if (parts.length < 2) return false;
   if (!parts[1]) return false;
@@ -72,6 +74,12 @@ export function isArtifactPath(pathname: string): boolean {
  */
 export async function resolveRouteStatus(pathname: string): Promise<RouteStatus> {
   const clean = pathname.replace(/\/+$/, "") || "/";
+  if (/^\/board(?:\/|$)/i.test(clean)) {
+    if (!await boardIsPublic()) return "not_found";
+    if (clean.split("/").length > 3) return "not_found";
+    const slug = clean.split("/")[2];
+    return !slug || (await boardRoster()).some(p => p.slug === decodeURIComponent(slug)) ? "ok" : "not_found";
+  }
   const parts = clean.replace(/^\//, "").split("/");
   const section = parts[0] ?? "";
   const slug = parts[1] ?? "";

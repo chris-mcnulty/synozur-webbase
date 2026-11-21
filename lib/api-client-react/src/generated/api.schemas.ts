@@ -5,6 +5,291 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface OrionTrafficDateCount {
+  date: string;
+  count: number;
+}
+
+export type OrionTrafficActivityByEventItem = {
+  event: string;
+  source: string;
+  count: number;
+};
+
+export type OrionTrafficActivityByResourceItemByEvent = {
+  [key: string]: number;
+};
+
+export type OrionTrafficActivityByResourceItem = {
+  resourceType: string;
+  resourceId: string;
+  resourceName: string;
+  count: number;
+  byEvent: OrionTrafficActivityByResourceItemByEvent;
+};
+
+export interface OrionTrafficActivity {
+  /** @minimum 0 */
+  totalEvents: number;
+  byEvent: OrionTrafficActivityByEventItem[];
+  byResource: OrionTrafficActivityByResourceItem[];
+  timeSeries: OrionTrafficDateCount[];
+  notes: string[];
+}
+
+export type OrionTrafficDataBySectionItem = {
+  section: string;
+  count: number;
+};
+
+export type OrionTrafficDataByPageItem = {
+  page: string;
+  count: number;
+};
+
+export type OrionTrafficDataByCountryItem = {
+  country: string;
+  count: number;
+};
+
+export type OrionTrafficDataByDeviceItem = {
+  device: string;
+  count: number;
+};
+
+export type OrionTrafficDataByBrowserItem = {
+  browser: string;
+  count: number;
+};
+
+export interface OrionTrafficData {
+  reportingVersion: number;
+  /** @minimum 0 */
+  totalVisits: number;
+  from: string;
+  to: string;
+  bySection: OrionTrafficDataBySectionItem[];
+  byPage: OrionTrafficDataByPageItem[];
+  byDate: OrionTrafficDateCount[];
+  byCountry: OrionTrafficDataByCountryItem[];
+  byDevice: OrionTrafficDataByDeviceItem[];
+  byBrowser: OrionTrafficDataByBrowserItem[];
+  activity: OrionTrafficActivity;
+}
+
+export interface OrionTrafficSnapshot {
+  fetchedAt: string;
+  stale: boolean;
+  refreshError?: string;
+  data: OrionTrafficData;
+}
+
+export interface PortalMessageInput {
+  /** @maxLength 10000 */
+  message: string;
+  /** @maxLength 200 */
+  signature: string;
+  /** @maxLength 80 */
+  quarterLabel: string;
+  visible: boolean;
+}
+
+export type PrivateCustomerPageStatus =
+  (typeof PrivateCustomerPageStatus)[keyof typeof PrivateCustomerPageStatus];
+
+export const PrivateCustomerPageStatus = {
+  draft: "draft",
+  published: "published",
+  archived: "archived",
+} as const;
+
+export type PrivateCustomerAssetKind =
+  (typeof PrivateCustomerAssetKind)[keyof typeof PrivateCustomerAssetKind];
+
+export const PrivateCustomerAssetKind = {
+  html: "html",
+  audio: "audio",
+  transcript: "transcript",
+} as const;
+
+export type PrivateCustomerAssetState =
+  (typeof PrivateCustomerAssetState)[keyof typeof PrivateCustomerAssetState];
+
+export const PrivateCustomerAssetState = {
+  ready: "ready",
+} as const;
+
+export interface PrivateCustomerAsset {
+  id: string;
+  kind: PrivateCustomerAssetKind;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  state: PrivateCustomerAssetState;
+}
+
+export interface PrivateCustomerPage {
+  id: string;
+  /** @nullable */
+  organizationId: string | null;
+  title: string;
+  slug: string;
+  status: PrivateCustomerPageStatus;
+  revision: number;
+  /** @nullable */
+  reviewedRevision: number | null;
+  assets: PrivateCustomerAsset[];
+}
+
+export interface PrivatePageInput {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  title: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   * @pattern ^[a-z0-9]+(-[a-z0-9]+)*$
+   */
+  slug: string;
+}
+
+export type PrivatePageUpdateAction =
+  (typeof PrivatePageUpdateAction)[keyof typeof PrivatePageUpdateAction];
+
+export const PrivatePageUpdateAction = {
+  review: "review",
+  publish: "publish",
+  unpublish: "unpublish",
+  archive: "archive",
+  assign: "assign",
+} as const;
+
+export interface PrivatePageUpdate {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  title?: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   * @pattern ^[a-z0-9]+(-[a-z0-9]+)*$
+   */
+  slug?: string;
+  /** @minimum 1 */
+  revision: number;
+  action?: PrivatePageUpdateAction;
+}
+
+export interface SharedAccountSummary {
+  id: string;
+  username: string;
+  disabled: boolean;
+}
+
+export interface SharedPasswordInput {
+  /**
+   * Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate.
+   * @minLength 15
+   * @maxLength 72
+   */
+  password?: string;
+}
+
+export interface SharedAccountInput {
+  /**
+   * Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate.
+   * @minLength 15
+   * @maxLength 72
+   */
+  password?: string;
+  /**
+   * @minLength 3
+   * @maxLength 128
+   * @pattern ^[a-z0-9][a-z0-9._@+-]{2,127}$
+   */
+  username: string;
+}
+
+export interface SharedLoginInput {
+  /**
+   * @minLength 3
+   * @maxLength 128
+   */
+  username: string;
+  /**
+   * @minLength 1
+   * @maxLength 128
+   */
+  password: string;
+}
+
+export interface BoardVisibility {
+  public: boolean;
+}
+
+export interface BoardTeamOption {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export type BoardProfileInputGroup =
+  (typeof BoardProfileInputGroup)[keyof typeof BoardProfileInputGroup];
+
+export const BoardProfileInputGroup = {
+  external: "external",
+  internal: "internal",
+} as const;
+
+export interface BoardProfileInput {
+  group: BoardProfileInputGroup;
+  /** @nullable */
+  teamMemberId?: number | null;
+  /**
+   * @maxLength 100
+   * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+   */
+  slug?: string;
+  /** @maxLength 200 */
+  name?: string;
+  /**
+   * @maxLength 300
+   * @nullable
+   */
+  jobTitle?: string | null;
+  /** @nullable */
+  shortDescription?: string | null;
+  /** @nullable */
+  longDescription?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  linkedinUrl?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  speakerBookingUrl?: string | null;
+  active: boolean;
+  /** @minimum 0 */
+  sortOrder: number;
+}
+
+export type BoardProfile = BoardProfileInput & {
+  id: number;
+  name: string;
+  slug: string;
+};
+
+export interface BoardRoster {
+  public: boolean;
+  items: BoardProfile[];
+}
+
 export interface AvatarUploadResult {
   /** Same-origin path to the uploaded public profile photo. */
   avatarUrl: string;
@@ -3089,6 +3374,8 @@ export interface TeamMemberInput {
    */
   speakerBookingUrl?: string | null;
   active?: boolean;
+  /** Admin-only independent Board visibility. Omit to preserve existing membership. Does not publish the Board. */
+  showOnBoard?: boolean;
   manualSort?: string;
   tags?: string[];
   userId?: string | null;
@@ -4210,6 +4497,110 @@ export type NotFoundResponse = ErrorEnvelope;
  * Bad request
  */
 export type BadRequestResponse = ErrorEnvelope;
+
+export type GetCmsOrionTrafficParams = {
+  from: string;
+  to: string;
+  refresh?: boolean;
+};
+
+export type LoginGalaxyBody = {
+  username: string;
+  password: string;
+};
+
+export type LoginGalaxy200AccountType =
+  (typeof LoginGalaxy200AccountType)[keyof typeof LoginGalaxy200AccountType];
+
+export const LoginGalaxy200AccountType = {
+  shared: "shared",
+  individual: "individual",
+} as const;
+
+export type LoginGalaxy200 = {
+  ok: boolean;
+  accountType: LoginGalaxy200AccountType;
+};
+
+export type GetPortalCeoMessage200 = {
+  item: PortalMessageInput | null;
+};
+
+export type ListPrivateCustomerPages200 = {
+  items: PrivateCustomerPage[];
+};
+
+export type GetPrivateCustomerPageParams = {
+  /**
+   * Explicit staff-only organization preview
+   */
+  previewOrg?: string;
+};
+
+export type GetPrivateCustomerHtmlParams = {
+  /**
+   * Explicit staff-only organization preview
+   */
+  previewOrg?: string;
+};
+
+export type GetPrivateCustomerNarrationParams = {
+  /**
+   * Explicit staff-only organization preview
+   */
+  previewOrg?: string;
+};
+
+export type GetPrivateCustomerNarration200 = {
+  text: string;
+};
+
+export type DownloadPrivateCustomerAttachmentParams = {
+  previewOrg?: string;
+};
+
+export type ListAdminPrivateCustomerPages200 = {
+  items: PrivateCustomerPage[];
+};
+
+export type ListSharedOrganizationAccounts200 = {
+  items: SharedAccountSummary[];
+};
+
+export type CreateSharedOrganizationAccount201 = {
+  account: SharedAccountSummary;
+  password: string;
+};
+
+export type RotateSharedOrganizationAccount200 = {
+  account: SharedAccountSummary;
+  password: string;
+};
+
+export type DisableSharedOrganizationAccount200 = {
+  ok: boolean;
+};
+
+/**
+ * @nullable
+ */
+export type GetSharedOrganizationSession200User = {
+  [key: string]: unknown;
+} | null;
+
+export type GetSharedOrganizationSession200 = {
+  signedIn: boolean;
+  /** @nullable */
+  user: GetSharedOrganizationSession200User;
+};
+
+export type SignInSharedOrganization200 = {
+  ok: boolean;
+};
+
+export type SignOutSharedOrganization200 = {
+  ok: boolean;
+};
 
 export type GetChapterAudioCostsParams = {
   /**

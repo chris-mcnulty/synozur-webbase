@@ -145,6 +145,7 @@ const SECTIONS: NavSection[] = [
     icon: UsersRound,
     items: [
       { href: "/people/team-members", label: "Team", icon: UserSquare2, capability: "site.manage", testId: "nav-admin-team" },
+      { href: "/people/board", label: "Board", icon: UserSquare2, roles: ["admin", "site_admin"], testId: "nav-admin-board" },
       { href: "/people/events", label: "Events", icon: CalendarDays, capability: "site.manage", testId: "nav-admin-events" },
       { href: "/people/bookings", label: "Bookings", icon: CalendarClock, capability: "site.manage", testId: "nav-admin-bookings" },
     ],
@@ -216,6 +217,7 @@ const SECTIONS: NavSection[] = [
     icon: PanelTop,
     items: [
       { href: "/site-config/site-settings", label: "Settings", icon: Settings, capability: "site.manage", testId: "nav-admin-site-settings" },
+      { href: "/site-config/portal-message", label: "Galaxy CEO Message", icon: FileText, capability: "site.manage", testId: "nav-admin-portal-message" },
       { href: "/site-config/alt-home", label: "Alt Home", icon: LayoutTemplate, capability: "site.manage", testId: "nav-admin-alt-home" },
       { href: "/site-config/experiments", label: "Experiments", icon: FlaskConical, capability: "site.manage", testId: "nav-admin-experiments" },
       { href: "/site-config/list-page-copy", label: "List Page Copy", icon: FileText, capability: "site.manage", testId: "nav-admin-list-page-copy" },

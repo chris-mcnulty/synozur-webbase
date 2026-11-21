@@ -7,6 +7,811 @@
  */
 import * as zod from "zod";
 
+/**
+ * @summary Read an app-wide Orion aggregate snapshot without importing traffic.
+ */
+export const GetCmsOrionTrafficQueryParams = zod.object({
+  from: zod.date(),
+  to: zod.date(),
+  refresh: zod.coerce.boolean().optional(),
+});
+
+export const getCmsOrionTrafficResponseDataTotalVisitsMin = 0;
+
+export const getCmsOrionTrafficResponseDataActivityTotalEventsMin = 0;
+
+export const GetCmsOrionTrafficResponse = zod.object({
+  fetchedAt: zod.coerce.date(),
+  stale: zod.boolean(),
+  refreshError: zod.string().optional(),
+  data: zod.object({
+    reportingVersion: zod.number(),
+    totalVisits: zod.number().min(getCmsOrionTrafficResponseDataTotalVisitsMin),
+    from: zod.coerce.date(),
+    to: zod.coerce.date(),
+    bySection: zod.array(
+      zod.object({
+        section: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    byPage: zod.array(
+      zod.object({
+        page: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    byDate: zod.array(
+      zod.object({
+        date: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    byCountry: zod.array(
+      zod.object({
+        country: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    byDevice: zod.array(
+      zod.object({
+        device: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    byBrowser: zod.array(
+      zod.object({
+        browser: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    activity: zod.object({
+      totalEvents: zod
+        .number()
+        .min(getCmsOrionTrafficResponseDataActivityTotalEventsMin),
+      byEvent: zod.array(
+        zod.object({
+          event: zod.string(),
+          source: zod.string(),
+          count: zod.number(),
+        }),
+      ),
+      byResource: zod.array(
+        zod.object({
+          resourceType: zod.string(),
+          resourceId: zod.string(),
+          resourceName: zod.string(),
+          count: zod.number(),
+          byEvent: zod.record(zod.string(), zod.number()),
+        }),
+      ),
+      timeSeries: zod.array(
+        zod.object({
+          date: zod.string(),
+          count: zod.number(),
+        }),
+      ),
+      notes: zod.array(zod.string()),
+    }),
+  }),
+});
+
+export const LoginGalaxyBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+});
+
+export const LoginGalaxyResponse = zod.object({
+  ok: zod.boolean(),
+  accountType: zod.enum(["shared", "individual"]),
+});
+
+export const getAdminPortalMessageResponseMessageMax = 10000;
+
+export const getAdminPortalMessageResponseSignatureMax = 200;
+
+export const getAdminPortalMessageResponseQuarterLabelMax = 80;
+
+export const GetAdminPortalMessageResponse = zod.object({
+  message: zod.string().max(getAdminPortalMessageResponseMessageMax),
+  signature: zod.string().max(getAdminPortalMessageResponseSignatureMax),
+  quarterLabel: zod.string().max(getAdminPortalMessageResponseQuarterLabelMax),
+  visible: zod.boolean(),
+});
+
+export const saveAdminPortalMessageBodyMessageMax = 10000;
+
+export const saveAdminPortalMessageBodySignatureMax = 200;
+
+export const saveAdminPortalMessageBodyQuarterLabelMax = 80;
+
+export const SaveAdminPortalMessageBody = zod.object({
+  message: zod.string().max(saveAdminPortalMessageBodyMessageMax),
+  signature: zod.string().max(saveAdminPortalMessageBodySignatureMax),
+  quarterLabel: zod.string().max(saveAdminPortalMessageBodyQuarterLabelMax),
+  visible: zod.boolean(),
+});
+
+export const saveAdminPortalMessageResponseMessageMax = 10000;
+
+export const saveAdminPortalMessageResponseSignatureMax = 200;
+
+export const saveAdminPortalMessageResponseQuarterLabelMax = 80;
+
+export const SaveAdminPortalMessageResponse = zod.object({
+  message: zod.string().max(saveAdminPortalMessageResponseMessageMax),
+  signature: zod.string().max(saveAdminPortalMessageResponseSignatureMax),
+  quarterLabel: zod.string().max(saveAdminPortalMessageResponseQuarterLabelMax),
+  visible: zod.boolean(),
+});
+
+export const getPortalCeoMessageResponseItemOneMessageMax = 10000;
+
+export const getPortalCeoMessageResponseItemOneSignatureMax = 200;
+
+export const getPortalCeoMessageResponseItemOneQuarterLabelMax = 80;
+
+export const GetPortalCeoMessageResponse = zod.object({
+  item: zod.union([
+    zod.object({
+      message: zod.string().max(getPortalCeoMessageResponseItemOneMessageMax),
+      signature: zod
+        .string()
+        .max(getPortalCeoMessageResponseItemOneSignatureMax),
+      quarterLabel: zod
+        .string()
+        .max(getPortalCeoMessageResponseItemOneQuarterLabelMax),
+      visible: zod.boolean(),
+    }),
+    zod.null(),
+  ]),
+});
+
+export const ListPrivateCustomerPagesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      organizationId: zod.string().uuid().nullable(),
+      title: zod.string(),
+      slug: zod.string(),
+      status: zod.enum(["draft", "published", "archived"]),
+      revision: zod.number(),
+      reviewedRevision: zod.number().nullable(),
+      assets: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          kind: zod.enum(["html", "audio", "transcript"]),
+          filename: zod.string(),
+          contentType: zod.string(),
+          sizeBytes: zod.number(),
+          state: zod.enum(["ready"]),
+        }),
+      ),
+    }),
+  ),
+});
+
+export const GetPrivateCustomerPageParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetPrivateCustomerPageQueryParams = zod.object({
+  previewOrg: zod.coerce
+    .string()
+    .uuid()
+    .optional()
+    .describe("Explicit staff-only organization preview"),
+});
+
+export const GetPrivateCustomerPageResponse = zod.object({
+  id: zod.string().uuid(),
+  organizationId: zod.string().uuid().nullable(),
+  title: zod.string(),
+  slug: zod.string(),
+  status: zod.enum(["draft", "published", "archived"]),
+  revision: zod.number(),
+  reviewedRevision: zod.number().nullable(),
+  assets: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      kind: zod.enum(["html", "audio", "transcript"]),
+      filename: zod.string(),
+      contentType: zod.string(),
+      sizeBytes: zod.number(),
+      state: zod.enum(["ready"]),
+    }),
+  ),
+});
+
+export const GetPrivateCustomerHtmlParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetPrivateCustomerHtmlQueryParams = zod.object({
+  previewOrg: zod.coerce
+    .string()
+    .uuid()
+    .optional()
+    .describe("Explicit staff-only organization preview"),
+});
+
+export const GetPrivateCustomerNarrationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetPrivateCustomerNarrationQueryParams = zod.object({
+  previewOrg: zod.coerce
+    .string()
+    .uuid()
+    .optional()
+    .describe("Explicit staff-only organization preview"),
+});
+
+export const GetPrivateCustomerNarrationResponse = zod.object({
+  text: zod.string(),
+});
+
+export const DownloadPrivateCustomerAttachmentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  kind: zod.enum(["audio", "transcript"]),
+});
+
+export const DownloadPrivateCustomerAttachmentQueryParams = zod.object({
+  previewOrg: zod.coerce.string().uuid().optional(),
+});
+
+export const DownloadPrivateCustomerAttachmentHeader = zod.object({
+  Range: zod.string().optional(),
+});
+
+export const ListAdminPrivateCustomerPagesParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+});
+
+export const ListAdminPrivateCustomerPagesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      organizationId: zod.string().uuid().nullable(),
+      title: zod.string(),
+      slug: zod.string(),
+      status: zod.enum(["draft", "published", "archived"]),
+      revision: zod.number(),
+      reviewedRevision: zod.number().nullable(),
+      assets: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          kind: zod.enum(["html", "audio", "transcript"]),
+          filename: zod.string(),
+          contentType: zod.string(),
+          sizeBytes: zod.number(),
+          state: zod.enum(["ready"]),
+        }),
+      ),
+    }),
+  ),
+});
+
+export const CreatePrivateCustomerPageParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+});
+
+export const CreatePrivateCustomerPageHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const createPrivateCustomerPageBodyTitleMax = 200;
+
+export const createPrivateCustomerPageBodySlugMax = 100;
+
+export const createPrivateCustomerPageBodySlugRegExp = new RegExp(
+  "^[a-z0-9]+(-[a-z0-9]+)\*$",
+);
+
+export const CreatePrivateCustomerPageBody = zod.object({
+  title: zod.string().min(1).max(createPrivateCustomerPageBodyTitleMax),
+  slug: zod
+    .string()
+    .min(1)
+    .max(createPrivateCustomerPageBodySlugMax)
+    .regex(createPrivateCustomerPageBodySlugRegExp),
+});
+
+export const UpdatePrivateCustomerPageParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdatePrivateCustomerPageHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const updatePrivateCustomerPageBodyTitleMax = 200;
+
+export const updatePrivateCustomerPageBodySlugMax = 100;
+
+export const updatePrivateCustomerPageBodySlugRegExp = new RegExp(
+  "^[a-z0-9]+(-[a-z0-9]+)\*$",
+);
+
+export const UpdatePrivateCustomerPageBody = zod.object({
+  title: zod
+    .string()
+    .min(1)
+    .max(updatePrivateCustomerPageBodyTitleMax)
+    .optional(),
+  slug: zod
+    .string()
+    .min(1)
+    .max(updatePrivateCustomerPageBodySlugMax)
+    .regex(updatePrivateCustomerPageBodySlugRegExp)
+    .optional(),
+  revision: zod.number().min(1),
+  action: zod
+    .enum(["review", "publish", "unpublish", "archive", "assign"])
+    .optional(),
+});
+
+export const UpdatePrivateCustomerPageResponse = zod.object({
+  id: zod.string().uuid(),
+  organizationId: zod.string().uuid().nullable(),
+  title: zod.string(),
+  slug: zod.string(),
+  status: zod.enum(["draft", "published", "archived"]),
+  revision: zod.number(),
+  reviewedRevision: zod.number().nullable(),
+  assets: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      kind: zod.enum(["html", "audio", "transcript"]),
+      filename: zod.string(),
+      contentType: zod.string(),
+      sizeBytes: zod.number(),
+      state: zod.enum(["ready"]),
+    }),
+  ),
+});
+
+export const UploadPrivateCustomerAssetParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+  id: zod.coerce.string().uuid(),
+  kind: zod.enum(["html", "audio", "transcript"]),
+});
+
+export const UploadPrivateCustomerAssetHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+  "X-Filename": zod.string(),
+  "X-Page-Revision": zod.number().min(1),
+});
+
+export const UploadPrivateCustomerAssetResponse = zod.object({
+  id: zod.string().uuid(),
+  organizationId: zod.string().uuid().nullable(),
+  title: zod.string(),
+  slug: zod.string(),
+  status: zod.enum(["draft", "published", "archived"]),
+  revision: zod.number(),
+  reviewedRevision: zod.number().nullable(),
+  assets: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      kind: zod.enum(["html", "audio", "transcript"]),
+      filename: zod.string(),
+      contentType: zod.string(),
+      sizeBytes: zod.number(),
+      state: zod.enum(["ready"]),
+    }),
+  ),
+});
+
+export const ListSharedOrganizationAccountsParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+});
+
+export const ListSharedOrganizationAccountsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      username: zod.string(),
+      disabled: zod.boolean(),
+    }),
+  ),
+});
+
+export const CreateSharedOrganizationAccountParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+});
+
+export const CreateSharedOrganizationAccountHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const createSharedOrganizationAccountBodyPasswordMin = 15;
+export const createSharedOrganizationAccountBodyPasswordMax = 72;
+
+export const createSharedOrganizationAccountBodyUsernameMin = 3;
+export const createSharedOrganizationAccountBodyUsernameMax = 128;
+
+export const createSharedOrganizationAccountBodyUsernameRegExp = new RegExp(
+  "^[a-z0-9][a-z0-9._@+-]{2,127}$",
+);
+
+export const CreateSharedOrganizationAccountBody = zod.object({
+  password: zod
+    .string()
+    .min(createSharedOrganizationAccountBodyPasswordMin)
+    .max(createSharedOrganizationAccountBodyPasswordMax)
+    .optional()
+    .describe(
+      "Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate.",
+    ),
+  username: zod
+    .string()
+    .min(createSharedOrganizationAccountBodyUsernameMin)
+    .max(createSharedOrganizationAccountBodyUsernameMax)
+    .regex(createSharedOrganizationAccountBodyUsernameRegExp),
+});
+
+export const RotateSharedOrganizationAccountParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+  id: zod.coerce.string().uuid(),
+});
+
+export const RotateSharedOrganizationAccountHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const rotateSharedOrganizationAccountBodyPasswordMin = 15;
+export const rotateSharedOrganizationAccountBodyPasswordMax = 72;
+
+export const RotateSharedOrganizationAccountBody = zod.object({
+  password: zod
+    .string()
+    .min(rotateSharedOrganizationAccountBodyPasswordMin)
+    .max(rotateSharedOrganizationAccountBodyPasswordMax)
+    .optional()
+    .describe(
+      "Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate.",
+    ),
+});
+
+export const RotateSharedOrganizationAccountResponse = zod.object({
+  account: zod.object({
+    id: zod.string().uuid(),
+    username: zod.string(),
+    disabled: zod.boolean(),
+  }),
+  password: zod.string(),
+});
+
+export const DisableSharedOrganizationAccountParams = zod.object({
+  orgId: zod.coerce.string().uuid(),
+  id: zod.coerce.string().uuid(),
+});
+
+export const DisableSharedOrganizationAccountHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const DisableSharedOrganizationAccountResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+export const GetSharedOrganizationSessionResponse = zod.object({
+  signedIn: zod.boolean(),
+  user: zod.record(zod.string(), zod.unknown()).nullable(),
+});
+
+export const SignInSharedOrganizationHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const signInSharedOrganizationBodyUsernameMin = 3;
+export const signInSharedOrganizationBodyUsernameMax = 128;
+
+export const signInSharedOrganizationBodyPasswordMax = 128;
+
+export const SignInSharedOrganizationBody = zod.object({
+  username: zod
+    .string()
+    .min(signInSharedOrganizationBodyUsernameMin)
+    .max(signInSharedOrganizationBodyUsernameMax),
+  password: zod.string().min(1).max(signInSharedOrganizationBodyPasswordMax),
+});
+
+export const SignInSharedOrganizationResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+export const SignOutSharedOrganizationHeader = zod.object({
+  "X-Galaxy-Request": zod.enum(["1"]),
+});
+
+export const SignOutSharedOrganizationResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+export const listBoardResponseItemsItemOneSlugMax = 100;
+
+export const listBoardResponseItemsItemOneSlugRegExp = new RegExp(
+  "^[a-z0-9]+(?:-[a-z0-9]+)\*$",
+);
+export const listBoardResponseItemsItemOneNameMax = 200;
+
+export const listBoardResponseItemsItemOneJobTitleMax = 300;
+
+export const listBoardResponseItemsItemOneSortOrderMin = 0;
+
+export const ListBoardResponse = zod.object({
+  public: zod.boolean(),
+  items: zod.array(
+    zod
+      .object({
+        group: zod.enum(["external", "internal"]),
+        teamMemberId: zod.number().nullish(),
+        slug: zod
+          .string()
+          .max(listBoardResponseItemsItemOneSlugMax)
+          .regex(listBoardResponseItemsItemOneSlugRegExp)
+          .optional(),
+        name: zod.string().max(listBoardResponseItemsItemOneNameMax).optional(),
+        jobTitle: zod
+          .string()
+          .max(listBoardResponseItemsItemOneJobTitleMax)
+          .nullish(),
+        shortDescription: zod.string().nullish(),
+        longDescription: zod.string().nullish(),
+        imageUrl: zod.string().nullish(),
+        linkedinUrl: zod.string().nullish(),
+        website: zod.string().nullish(),
+        email: zod.string().nullish(),
+        speakerBookingUrl: zod.string().nullish(),
+        active: zod.boolean(),
+        sortOrder: zod.number().min(listBoardResponseItemsItemOneSortOrderMin),
+      })
+      .and(
+        zod.object({
+          id: zod.number(),
+          name: zod.string(),
+          slug: zod.string(),
+        }),
+      ),
+  ),
+});
+
+export const GetBoardStatusResponse = zod.object({
+  public: zod.boolean(),
+});
+
+export const GetBoardProfileParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const getBoardProfileResponseOneSlugMax = 100;
+
+export const getBoardProfileResponseOneSlugRegExp = new RegExp(
+  "^[a-z0-9]+(?:-[a-z0-9]+)\*$",
+);
+export const getBoardProfileResponseOneNameMax = 200;
+
+export const getBoardProfileResponseOneJobTitleMax = 300;
+
+export const getBoardProfileResponseOneSortOrderMin = 0;
+
+export const GetBoardProfileResponse = zod
+  .object({
+    group: zod.enum(["external", "internal"]),
+    teamMemberId: zod.number().nullish(),
+    slug: zod
+      .string()
+      .max(getBoardProfileResponseOneSlugMax)
+      .regex(getBoardProfileResponseOneSlugRegExp)
+      .optional(),
+    name: zod.string().max(getBoardProfileResponseOneNameMax).optional(),
+    jobTitle: zod.string().max(getBoardProfileResponseOneJobTitleMax).nullish(),
+    shortDescription: zod.string().nullish(),
+    longDescription: zod.string().nullish(),
+    imageUrl: zod.string().nullish(),
+    linkedinUrl: zod.string().nullish(),
+    website: zod.string().nullish(),
+    email: zod.string().nullish(),
+    speakerBookingUrl: zod.string().nullish(),
+    active: zod.boolean(),
+    sortOrder: zod.number().min(getBoardProfileResponseOneSortOrderMin),
+  })
+  .and(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      slug: zod.string(),
+    }),
+  );
+
+export const listAdminBoardResponseItemsItemOneSlugMax = 100;
+
+export const listAdminBoardResponseItemsItemOneSlugRegExp = new RegExp(
+  "^[a-z0-9]+(?:-[a-z0-9]+)\*$",
+);
+export const listAdminBoardResponseItemsItemOneNameMax = 200;
+
+export const listAdminBoardResponseItemsItemOneJobTitleMax = 300;
+
+export const listAdminBoardResponseItemsItemOneSortOrderMin = 0;
+
+export const ListAdminBoardResponse = zod.object({
+  public: zod.boolean(),
+  items: zod.array(
+    zod
+      .object({
+        group: zod.enum(["external", "internal"]),
+        teamMemberId: zod.number().nullish(),
+        slug: zod
+          .string()
+          .max(listAdminBoardResponseItemsItemOneSlugMax)
+          .regex(listAdminBoardResponseItemsItemOneSlugRegExp)
+          .optional(),
+        name: zod
+          .string()
+          .max(listAdminBoardResponseItemsItemOneNameMax)
+          .optional(),
+        jobTitle: zod
+          .string()
+          .max(listAdminBoardResponseItemsItemOneJobTitleMax)
+          .nullish(),
+        shortDescription: zod.string().nullish(),
+        longDescription: zod.string().nullish(),
+        imageUrl: zod.string().nullish(),
+        linkedinUrl: zod.string().nullish(),
+        website: zod.string().nullish(),
+        email: zod.string().nullish(),
+        speakerBookingUrl: zod.string().nullish(),
+        active: zod.boolean(),
+        sortOrder: zod
+          .number()
+          .min(listAdminBoardResponseItemsItemOneSortOrderMin),
+      })
+      .and(
+        zod.object({
+          id: zod.number(),
+          name: zod.string(),
+          slug: zod.string(),
+        }),
+      ),
+  ),
+});
+
+export const createBoardProfileBodySlugMax = 100;
+
+export const createBoardProfileBodySlugRegExp = new RegExp(
+  "^[a-z0-9]+(?:-[a-z0-9]+)\*$",
+);
+export const createBoardProfileBodyNameMax = 200;
+
+export const createBoardProfileBodyJobTitleMax = 300;
+
+export const createBoardProfileBodySortOrderMin = 0;
+
+export const CreateBoardProfileBody = zod.object({
+  group: zod.enum(["external", "internal"]),
+  teamMemberId: zod.number().nullish(),
+  slug: zod
+    .string()
+    .max(createBoardProfileBodySlugMax)
+    .regex(createBoardProfileBodySlugRegExp)
+    .optional(),
+  name: zod.string().max(createBoardProfileBodyNameMax).optional(),
+  jobTitle: zod.string().max(createBoardProfileBodyJobTitleMax).nullish(),
+  shortDescription: zod.string().nullish(),
+  longDescription: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  linkedinUrl: zod.string().nullish(),
+  website: zod.string().nullish(),
+  email: zod.string().nullish(),
+  speakerBookingUrl: zod.string().nullish(),
+  active: zod.boolean(),
+  sortOrder: zod.number().min(createBoardProfileBodySortOrderMin),
+});
+
+export const ListBoardTeamOptionsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  slug: zod.string(),
+});
+export const ListBoardTeamOptionsResponse = zod.array(
+  ListBoardTeamOptionsResponseItem,
+);
+
+export const SetBoardVisibilityBody = zod.object({
+  public: zod.boolean(),
+});
+
+export const SetBoardVisibilityResponse = zod.object({
+  public: zod.boolean(),
+});
+
+export const UpdateBoardProfileParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const updateBoardProfileBodySlugMax = 100;
+
+export const updateBoardProfileBodySlugRegExp = new RegExp(
+  "^[a-z0-9]+(?:-[a-z0-9]+)\*$",
+);
+export const updateBoardProfileBodyNameMax = 200;
+
+export const updateBoardProfileBodyJobTitleMax = 300;
+
+export const updateBoardProfileBodySortOrderMin = 0;
+
+export const UpdateBoardProfileBody = zod.object({
+  group: zod.enum(["external", "internal"]),
+  teamMemberId: zod.number().nullish(),
+  slug: zod
+    .string()
+    .max(updateBoardProfileBodySlugMax)
+    .regex(updateBoardProfileBodySlugRegExp)
+    .optional(),
+  name: zod.string().max(updateBoardProfileBodyNameMax).optional(),
+  jobTitle: zod.string().max(updateBoardProfileBodyJobTitleMax).nullish(),
+  shortDescription: zod.string().nullish(),
+  longDescription: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  linkedinUrl: zod.string().nullish(),
+  website: zod.string().nullish(),
+  email: zod.string().nullish(),
+  speakerBookingUrl: zod.string().nullish(),
+  active: zod.boolean(),
+  sortOrder: zod.number().min(updateBoardProfileBodySortOrderMin),
+});
+
+export const updateBoardProfileResponseOneSlugMax = 100;
+
+export const updateBoardProfileResponseOneSlugRegExp = new RegExp(
+  "^[a-z0-9]+(?:-[a-z0-9]+)\*$",
+);
+export const updateBoardProfileResponseOneNameMax = 200;
+
+export const updateBoardProfileResponseOneJobTitleMax = 300;
+
+export const updateBoardProfileResponseOneSortOrderMin = 0;
+
+export const UpdateBoardProfileResponse = zod
+  .object({
+    group: zod.enum(["external", "internal"]),
+    teamMemberId: zod.number().nullish(),
+    slug: zod
+      .string()
+      .max(updateBoardProfileResponseOneSlugMax)
+      .regex(updateBoardProfileResponseOneSlugRegExp)
+      .optional(),
+    name: zod.string().max(updateBoardProfileResponseOneNameMax).optional(),
+    jobTitle: zod
+      .string()
+      .max(updateBoardProfileResponseOneJobTitleMax)
+      .nullish(),
+    shortDescription: zod.string().nullish(),
+    longDescription: zod.string().nullish(),
+    imageUrl: zod.string().nullish(),
+    linkedinUrl: zod.string().nullish(),
+    website: zod.string().nullish(),
+    email: zod.string().nullish(),
+    speakerBookingUrl: zod.string().nullish(),
+    active: zod.boolean(),
+    sortOrder: zod.number().min(updateBoardProfileResponseOneSortOrderMin),
+  })
+  .and(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      slug: zod.string(),
+    }),
+  );
+
+export const DeleteBoardProfileParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
 export const estimateChapterAudioBodyTextMax = 200000;
 
 export const estimateChapterAudioBodyNotesMax = 100000;
@@ -5208,6 +6013,12 @@ export const CreateTeamMemberBody = zod.object({
     .nullish()
     .describe("URL for the speaker booking or inquiry page."),
   active: zod.boolean().optional(),
+  showOnBoard: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Admin-only independent Board visibility. Omit to preserve existing membership. Does not publish the Board.",
+    ),
   manualSort: zod.string().optional(),
   tags: zod.array(zod.string()).optional(),
   userId: zod.string().uuid().nullish(),
@@ -5261,6 +6072,12 @@ export const UpdateTeamMemberBody = zod.object({
     .nullish()
     .describe("URL for the speaker booking or inquiry page."),
   active: zod.boolean().optional(),
+  showOnBoard: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Admin-only independent Board visibility. Omit to preserve existing membership. Does not publish the Board.",
+    ),
   manualSort: zod.string().optional(),
   tags: zod.array(zod.string()).optional(),
   userId: zod.string().uuid().nullish(),

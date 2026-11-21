@@ -100,6 +100,8 @@ const REGISTERED: ReadonlyArray<{ path: string; file: string }> = [
  *   - parked      — inactive variant that canonicalizes elsewhere.
  */
 const EXCLUDED: Readonly<Record<string, string>> = {
+  "board.tsx": "dynamic: publication-gated Board resolver and roster, tested by routes/board.test.ts; not an unconditional public static page",
+  "board-detail.tsx": "db-detail: publication-gated Board profile resolver, tested by routes/board.test.ts",
   // db-list (content_parent_pages / "List page copy" — resolved server-side
   // by resolveOgData's !slug → content_parent_pages branch, not STATIC_PAGE_OG)
   "applications.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=applications), resolved by resolveOgData",

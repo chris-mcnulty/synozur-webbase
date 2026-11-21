@@ -1,3 +1,4 @@
+export * from "./board";
 export * from "./chapterAudio";
 export * from "./chapterAudioCosts";
 export * from "./_artifactBase";
@@ -71,3 +72,7 @@ export * from "./serviceTokens";
 export * from "./seoCoverage";
 export * from "./apiKeys";
 export * from "./briefingPodcasts";
+export * from "./privateCustomerPages";
+export * from "./privateCustomerAssets";
+export * from "./sharedOrganizationAccounts";
+export * from "./portalMessage";

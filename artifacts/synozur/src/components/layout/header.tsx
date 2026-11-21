@@ -23,6 +23,7 @@ import { getActiveApplications } from "@/data/applications";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
 import { useAuth, type AuthedUser } from "@/context/auth";
+import { useBoardNavVisible } from "@/lib/board";
 import { useOverride, useTrackConversion } from "@/lib/experiments";
 import {
   LOGO_COLOR_URL,
@@ -183,6 +184,7 @@ export function Header() {
   const [location, navigate] = useLocation();
   const isHome = location === "/" || location === "";
   const { isSignedIn, user, signOut } = useAuth();
+  const showBoard = useBoardNavVisible();
   // Experiment overrides for the upper-right CTA. The default values
   // match today's hardcoded behavior (visible, "Get Started", → /start).
   const headerCtaVisible = useOverride<boolean>("header.cta.visible", true);
@@ -365,7 +367,14 @@ export function Header() {
     }));
 
   const navGroups: NavGroup[] = [
-    STATIC_NAV_GROUPS_BASE.ourStory,
+    showBoard
+      ? {
+          ...STATIC_NAV_GROUPS_BASE.ourStory,
+          links: STATIC_NAV_GROUPS_BASE.ourStory.links.flatMap((l) =>
+            l.href === "/team" ? [l, { label: "Board", href: "/board" }] : [l],
+          ),
+        }
+      : STATIC_NAV_GROUPS_BASE.ourStory,
     buildSolutionsMenuGroup(solutionItems),
     STATIC_NAV_GROUPS_BASE.theFeed,
     {

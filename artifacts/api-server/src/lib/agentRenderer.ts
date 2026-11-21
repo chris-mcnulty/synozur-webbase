@@ -1,3 +1,4 @@
+import { boardIsPublic, boardRoster } from "./board";
 /**
  * Agent / crawler prerenderer.
  *
@@ -1424,6 +1425,17 @@ async function renderMainContent(
 ): Promise<string> {
   const clean = pathname.replace(/\/+$/, "") || "/";
   if (clean === "/") return renderHome(origin, og);
+  if (/^\/board(?:\/|$)/i.test(clean)) {
+    if (!await boardIsPublic()) return "<h1>Not found</h1>";
+    const people = await boardRoster();
+    const slug = clean.split("/")[2];
+    if (slug) {
+      const p = people.find(p => p.slug === decodeURIComponent(slug));
+      if (!p) return "<h1>Not found</h1>";
+      return `<h1>${htmlEscape(p.name)}</h1><p>${htmlEscape(p.jobTitle || "")}</p>${sanitizeCmsHtml(p.shortDescription)}${sanitizeCmsHtml(p.longDescription)}<p><a href="/board">Board of Advisors</a></p>`;
+    }
+    return `<h1>Board of Advisors</h1><ul>${people.map(p => `<li><h2><a href="${origin}/board/${encodeURIComponent(p.slug)}">${htmlEscape(p.name)}</a></h2><p>${htmlEscape(p.jobTitle || "")}</p>${sanitizeCmsHtml(p.shortDescription)}</li>`).join("")}</ul>`;
+  }
 
   const parts = clean.replace(/^\//, "").split("/");
   const section = parts[0] ?? "";
@@ -1533,7 +1545,10 @@ export async function buildAgentPageHtml(pathname: string): Promise<string> {
   if (!main) {
     main = `<h1>${htmlEscape(og.title)}</h1>\n<p>${htmlEscape(og.description)}</p>`;
   }
-  return renderAgentDocument(og, main);
+  const html = renderAgentDocument(og, main);
+  return await boardIsPublic()
+    ? html.replace("</nav>", `<a href="${origin}/board">Board</a></nav>`)
+    : html;
 }
 
 async function renderPolarisDetail(slug: string, og: OgData): Promise<string> {

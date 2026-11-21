@@ -176,8 +176,7 @@ export default function WhitePaperDetail() {
             {wp.bodyHtml ? (
               <RichText
                 html={wp.bodyHtml}
-                invert
-                className="prose-p:text-foreground prose-headings:text-foreground prose-a:text-primary"
+                className="prose-p:text-foreground prose-li:text-foreground prose-headings:text-foreground prose-a:text-primary"
               />
             ) : (
               wp.shortDescription && (

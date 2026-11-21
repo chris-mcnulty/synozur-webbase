@@ -74,7 +74,8 @@ export function agentBotRendererMiddleware(
     // on top-level navigations (Chrome 76+, Firefox 90+, Edge 79+, Safari 16.4+).
     const secFetchMode = req.headers["sec-fetch-mode"] as string | undefined;
     const isGenericFetcher =
-      !bot.isBot && !secFetchMode && isArtifactPath(pathname);
+      (!bot.isBot || (/^\/board(?:\/|$)/.test(pathname) && bot.botCategory === "other"))
+      && !secFetchMode && isArtifactPath(pathname);
 
     if (!isAgentCategory && !isGenericFetcher) return next();
 

@@ -68,6 +68,451 @@ tags:
   - name: CmsApiKeys
     description: Admin API key management for machine-to-machine access.
 paths:
+  /cms/traffic/orion:
+    get:
+      operationId: getCmsOrionTraffic
+      tags: [CMS Analytics]
+      summary: Read an app-wide Orion aggregate snapshot without importing traffic.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: refresh, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Orion snapshot with last successful fetch time and stale status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrionTrafficSnapshot"
+        "400": { description: Invalid reporting window }
+        "401": { description: Sign-in required }
+        "403": { description: Editor or administrator required }
+        "502": { description: Orion unavailable and no cached report exists }
+  /auth/galaxy/login:
+    post:
+      operationId: loginGalaxy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: Signed in with the appropriate account session
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, accountType]
+                properties:
+                  ok: { type: boolean }
+                  accountType: { type: string, enum: [shared, individual] }
+  /admin/portal-message:
+    get:
+      operationId: getAdminPortalMessage
+      responses:
+        "200":
+          description: CEO message settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalMessageInput" }
+    put:
+      operationId: saveAdminPortalMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PortalMessageInput" }
+      responses:
+        "200":
+          description: Saved message settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalMessageInput" }
+  /portal/ceo-message:
+    get:
+      operationId: getPortalCeoMessage
+      responses:
+        "200":
+          description: Visible CEO message or null
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [item]
+                properties:
+                  item:
+                    anyOf:
+                      - { $ref: "#/components/schemas/PortalMessageInput" }
+                      - { type: "null" }
+  /private-pages:
+    get:
+      operationId: listPrivateCustomerPages
+      responses:
+        "200": &pageList
+          description: Authorized pages only
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/PrivateCustomerPage" }
+        "401": &unauthorized
+          description: Unauthorized
+        "403": &forbidden
+          description: Forbidden
+  /private-pages/{id}:
+    parameters: &memberParams
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: previewOrg, in: query, schema: { type: string, format: uuid }, description: Explicit staff-only organization preview }
+    get:
+      operationId: getPrivateCustomerPage
+      responses:
+        "200": &page
+          description: Private page metadata without provider URLs
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrivateCustomerPage" }
+        "401": *unauthorized
+        "404": &notFound
+          description: Not found or inaccessible
+  /private-pages/{id}/html:
+    parameters: *memberParams
+    get:
+      operationId: getPrivateCustomerHtml
+      responses:
+        "200":
+          description: Isolated HTML with restrictive CSP and sandbox response headers
+          content:
+            text/html:
+              schema: { type: string }
+        "401": *unauthorized
+        "404": *notFound
+  /private-pages/{id}/script:
+    parameters: *memberParams
+    get:
+      operationId: getPrivateCustomerNarration
+      responses:
+        "200":
+          description: Supplied narration script, not a verified verbatim transcript
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text]
+                properties:
+                  text: { type: string }
+        "401": *unauthorized
+        "404": *notFound
+  /private-pages/{id}/assets/{kind}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: kind, in: path, required: true, schema: { type: string, enum: [audio, transcript] } }
+      - { name: previewOrg, in: query, schema: { type: string, format: uuid } }
+      - { name: Range, in: header, schema: { type: string } }
+    get:
+      operationId: downloadPrivateCustomerAttachment
+      responses:
+        "200":
+          description: Authenticated private attachment bytes
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206":
+          description: Single audio byte range, with Content-Range and Content-Length
+        "416":
+          description: Unsatisfiable audio range, with bytes */size Content-Range
+        "401": *unauthorized
+        "404": *notFound
+  /admin/private-pages/{orgId}/pages:
+    parameters: &orgParams
+      - { name: orgId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: listAdminPrivateCustomerPages
+      responses:
+        "200": *pageList
+        "401": *unauthorized
+        "403": *forbidden
+    post:
+      operationId: createPrivateCustomerPage
+      parameters: &writeParams
+        - { name: X-Galaxy-Request, in: header, required: true, schema: { type: string, enum: ["1"] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrivatePageInput" }
+      responses:
+        "201": *page
+        "400": &badRequest
+          description: Invalid request
+        "403": *forbidden
+        "409": &conflict
+          description: Conflict or incomplete review/upload
+  /admin/private-pages/{orgId}/pages/{id}:
+    parameters: &adminItemParams
+      - { name: orgId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: updatePrivateCustomerPage
+      parameters: *writeParams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrivatePageUpdate" }
+      responses:
+        "200": *page
+        "400": *badRequest
+        "403": *forbidden
+        "404": *notFound
+        "409": *conflict
+  /admin/private-pages/{orgId}/pages/{id}/assets/{kind}:
+    parameters:
+      - { name: orgId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: kind, in: path, required: true, schema: { type: string, enum: [html, audio, transcript] } }
+      - { name: X-Galaxy-Request, in: header, required: true, schema: { type: string, enum: ["1"] } }
+      - { name: X-Filename, in: header, required: true, schema: { type: string } }
+      - { name: X-Page-Revision, in: header, required: true, schema: { type: integer, minimum: 1 } }
+    put:
+      operationId: uploadPrivateCustomerAsset
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200": *page
+        "400": *badRequest
+        "403": *forbidden
+        "404": *notFound
+        "409": *conflict
+        "413": { description: Attachment exceeds size limit }
+        "503": { description: Private storage unavailable; page stays draft }
+  /admin/private-pages/{orgId}/accounts:
+    parameters: *orgParams
+    get:
+      operationId: listSharedOrganizationAccounts
+      responses:
+        "200":
+          description: Account summaries, never password hashes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/SharedAccountSummary" }
+        "403": *forbidden
+    post:
+      operationId: createSharedOrganizationAccount
+      parameters: *writeParams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SharedAccountInput" }
+      responses:
+        "201": &passwordResult
+          description: Password shown once, no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account, password]
+                properties:
+                  account: { $ref: "#/components/schemas/SharedAccountSummary" }
+                  password: { type: string }
+        "400": *badRequest
+        "403": *forbidden
+        "409": *conflict
+  /admin/private-pages/{orgId}/accounts/{id}/rotate:
+    parameters: *adminItemParams
+    post:
+      operationId: rotateSharedOrganizationAccount
+      parameters: *writeParams
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SharedPasswordInput" }
+      responses:
+        "200": *passwordResult
+        "403": *forbidden
+        "404": *notFound
+  /admin/private-pages/{orgId}/accounts/{id}/disable:
+    parameters: *adminItemParams
+    post:
+      operationId: disableSharedOrganizationAccount
+      parameters: *writeParams
+      responses:
+        "200": &ok
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "403": *forbidden
+        "404": *notFound
+  /auth/shared/session:
+    get:
+      operationId: getSharedOrganizationSession
+      responses:
+        "200":
+          description: Shared cookie identity or signed-out state; no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [signedIn, user]
+                properties:
+                  signedIn: { type: boolean }
+                  user: { type: [object, "null"], additionalProperties: true }
+  /auth/shared/login:
+    post:
+      operationId: signInSharedOrganization
+      parameters: *writeParams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SharedLoginInput" }
+      responses:
+        "200": *ok
+        "401": *unauthorized
+        "403": *forbidden
+        "429": { description: Account or IP throttle }
+  /auth/shared/logout:
+    post:
+      operationId: signOutSharedOrganization
+      parameters: *writeParams
+      responses:
+        "200": *ok
+        "403": *forbidden
+  /board:
+    get:
+      operationId: listBoard
+      responses:
+        "200":
+          description: Visible active board profiles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardRoster"
+  /board/status:
+    get:
+      operationId: getBoardStatus
+      responses:
+        "200":
+          description: Section visibility only, never roster data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardVisibility"
+  /board/{slug}:
+    get:
+      operationId: getBoardProfile
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Visible profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardProfile"
+  /admin/board:
+    get:
+      operationId: listAdminBoard
+      responses:
+        "200":
+          description: All board profiles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardRoster"
+    post:
+      operationId: createBoardProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardProfileInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardProfile"
+  /admin/board/team-options:
+    get:
+      operationId: listBoardTeamOptions
+      responses:
+        "200":
+          description: Existing Team profiles for linking
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BoardTeamOption"
+  /admin/board/visibility:
+    put:
+      operationId: setBoardVisibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardVisibility"
+      responses:
+        "200":
+          description: Explicit publication or restriction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardVisibility"
+  /admin/board/{id}:
+    put:
+      operationId: updateBoardProfile
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardProfileInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardProfile"
+    delete:
+      operationId: deleteBoardProfile
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "204":
+          description: Removed board membership only
   /cms/profile/avatar:
     post:
       tags: [CMS Users]
@@ -4924,6 +5369,225 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    OrionTrafficSnapshot:
+      type: object
+      required: [data, fetchedAt, stale]
+      properties:
+        fetchedAt: { type: string, format: date-time }
+        stale: { type: boolean }
+        refreshError: { type: string }
+        data:
+          $ref: "#/components/schemas/OrionTrafficData"
+    OrionTrafficData:
+      type: object
+      required: [reportingVersion, totalVisits, from, to, bySection, byPage, byDate, byCountry, byDevice, byBrowser, activity]
+      properties:
+        reportingVersion: { type: integer }
+        totalVisits: { type: integer, minimum: 0 }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        bySection:
+          type: array
+          items:
+            type: object
+            required: [section, count]
+            properties:
+              section: { type: string }
+              count: { type: integer }
+        byPage:
+          type: array
+          items:
+            type: object
+            required: [page, count]
+            properties:
+              page: { type: string }
+              count: { type: integer }
+        byDate:
+          type: array
+          items: { $ref: "#/components/schemas/OrionTrafficDateCount" }
+        byCountry:
+          type: array
+          items:
+            type: object
+            required: [country, count]
+            properties:
+              country: { type: string }
+              count: { type: integer }
+        byDevice:
+          type: array
+          items:
+            type: object
+            required: [device, count]
+            properties:
+              device: { type: string }
+              count: { type: integer }
+        byBrowser:
+          type: array
+          items:
+            type: object
+            required: [browser, count]
+            properties:
+              browser: { type: string }
+              count: { type: integer }
+        activity:
+          $ref: "#/components/schemas/OrionTrafficActivity"
+    OrionTrafficDateCount:
+      type: object
+      required: [date, count]
+      properties:
+        date: { type: string }
+        count: { type: integer }
+    OrionTrafficActivity:
+      type: object
+      required: [totalEvents, byEvent, byResource, timeSeries, notes]
+      properties:
+        totalEvents: { type: integer, minimum: 0 }
+        byEvent:
+          type: array
+          items:
+            type: object
+            required: [event, source, count]
+            properties:
+              event: { type: string }
+              source: { type: string }
+              count: { type: integer }
+        byResource:
+          type: array
+          items:
+            type: object
+            required: [resourceType, resourceId, resourceName, count, byEvent]
+            properties:
+              resourceType: { type: string }
+              resourceId: { type: string }
+              resourceName: { type: string }
+              count: { type: integer }
+              byEvent:
+                type: object
+                additionalProperties: { type: integer }
+        timeSeries:
+          type: array
+          items: { $ref: "#/components/schemas/OrionTrafficDateCount" }
+        notes:
+          type: array
+          items: { type: string }
+    PortalMessageInput:
+      type: object
+      required: [message, signature, quarterLabel, visible]
+      properties:
+        message: { type: string, maxLength: 10000 }
+        signature: { type: string, maxLength: 200 }
+        quarterLabel: { type: string, maxLength: 80 }
+        visible: { type: boolean }
+    PrivateCustomerPage:
+      type: object
+      required: [id, organizationId, title, slug, status, revision, reviewedRevision, assets]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: [string, "null"], format: uuid }
+        title: { type: string }
+        slug: { type: string }
+        status: { type: string, enum: [draft, published, archived] }
+        revision: { type: integer }
+        reviewedRevision: { type: [integer, "null"] }
+        assets:
+          type: array
+          items: { $ref: "#/components/schemas/PrivateCustomerAsset" }
+    PrivateCustomerAsset:
+      type: object
+      required: [id, kind, filename, contentType, sizeBytes, state]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [html, audio, transcript] }
+        filename: { type: string }
+        contentType: { type: string }
+        sizeBytes: { type: number }
+        state: { type: string, enum: [ready] }
+    PrivatePageInput:
+      type: object
+      required: [title, slug]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        slug: { type: string, minLength: 1, maxLength: 100, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }
+    PrivatePageUpdate:
+      type: object
+      required: [revision]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        slug: { type: string, minLength: 1, maxLength: 100, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }
+        revision: { type: integer, minimum: 1 }
+        action: { type: string, enum: [review, publish, unpublish, archive, assign] }
+    SharedAccountSummary:
+      type: object
+      required: [id, username, disabled]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        disabled: { type: boolean }
+    SharedPasswordInput:
+      type: object
+      properties:
+        password: { type: string, minLength: 15, maxLength: 72, description: "Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate." }
+    SharedAccountInput:
+      type: object
+      required: [username]
+      properties:
+        password: { type: string, minLength: 15, maxLength: 72, description: "Optional administrator-chosen password; maximum 72 UTF-8 bytes. Omit to generate." }
+        username: { type: string, minLength: 3, maxLength: 128, pattern: "^[a-z0-9][a-z0-9._@+-]{2,127}$" }
+    SharedLoginInput:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 128 }
+        password: { type: string, minLength: 1, maxLength: 128 }
+
+    BoardVisibility:
+      type: object
+      required: [public]
+      properties:
+        public: { type: boolean }
+    BoardTeamOption:
+      type: object
+      required: [id, name, slug]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+    BoardProfileInput:
+      type: object
+      required: [group, active, sortOrder]
+      properties:
+        group: { type: string, enum: [external, internal] }
+        teamMemberId: { type: [integer, "null"] }
+        slug: { type: string, pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$", maxLength: 100 }
+        name: { type: string, maxLength: 200 }
+        jobTitle: { type: [string, "null"], maxLength: 300 }
+        shortDescription: { type: [string, "null"] }
+        longDescription: { type: [string, "null"] }
+        imageUrl: { type: [string, "null"] }
+        linkedinUrl: { type: [string, "null"] }
+        website: { type: [string, "null"] }
+        email: { type: [string, "null"] }
+        speakerBookingUrl: { type: [string, "null"] }
+        active: { type: boolean }
+        sortOrder: { type: integer, minimum: 0 }
+    BoardProfile:
+      allOf:
+        - $ref: "#/components/schemas/BoardProfileInput"
+        - type: object
+          required: [id, name, slug]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            slug: { type: string }
+    BoardRoster:
+      type: object
+      required: [public, items]
+      properties:
+        public: { type: boolean }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BoardProfile"
     AvatarUploadResult:
       type: object
       required: [avatarUrl]
@@ -9965,6 +10629,9 @@ components:
           description: URL for the speaker booking or inquiry page.
         active:
           type: boolean
+        showOnBoard:
+          type: boolean
+          description: Admin-only independent Board visibility. Omit to preserve existing membership. Does not publish the Board.
         manualSort:
           type: string
         tags:

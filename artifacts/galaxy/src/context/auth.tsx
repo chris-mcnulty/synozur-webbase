@@ -8,7 +8,10 @@ import {
   type ReactNode,
 } from "react";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { getOauthClient } from "@/lib/oauthClient";
+
+export const SHARED_SIGNOUT_FLAG = "galaxy-shared-signed-out";
 
 // Galaxy authenticates via the central Synozur OAuth 2.0 / OIDC provider
 // (#128). On sign-in we redirect the user through /oauth/authorize with
@@ -68,7 +71,22 @@ function installTokenGetter() {
 // OAuth handshake to hydrate the full server-shaped `AuthedUser` (roles,
 // capabilities) — the userinfo endpoint deliberately exposes only the
 // identity claims (sub / email / name / picture), not authorization claims.
+// Shared organization sessions live in an HttpOnly cookie only; try that
+// first, then fall back to the individual OAuth bearer flow.
+async function fetchSharedSession(): Promise<AuthedUser | null> {
+  try {
+    const res = await fetch(`/api/auth/shared/session`, { credentials: "include" });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { signedIn: boolean; user: AuthedUser | null };
+    return json.signedIn ? json.user : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchMe(): Promise<AuthedUser | null> {
+  const shared = await fetchSharedSession();
+  if (shared) return shared;
   try {
     const token = await getOauthClient().getAccessToken();
     if (!token) return null;
@@ -87,6 +105,7 @@ async function fetchMe(): Promise<AuthedUser | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthedUser | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const queryClient = useQueryClient();
 
   installTokenGetter();
 
@@ -115,11 +134,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    if (user?.authProvider === "shared_org") {
+      try {
+        const response = await fetch(`/api/auth/shared/logout`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "X-Galaxy-Request": "1" },
+        });
+        if (!response.ok) throw new Error("Sign-out failed");
+      } catch {
+        window.alert("Could not sign out securely. Check your connection and try again.");
+        return;
+      }
+      getOauthClient().clearTokens();
+      queryClient.clear();
+      setUser(null);
+      try { sessionStorage.setItem(SHARED_SIGNOUT_FLAG, "1"); } catch { /* ignore */ }
+      return;
+    }
+    try {
+      const response = await fetch("/api/auth/sign-out", { method: "POST", credentials: "include" });
+      if (!response.ok) throw new Error("Sign-out failed");
+    } catch {
+      window.alert("Could not sign out securely. Check your connection and try again.");
+      return;
+    }
     getOauthClient().clearTokens();
+    queryClient.clear();
     setUser(null);
     const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
     window.location.assign(`${base}/`);
-  }, []);
+  }, [user, queryClient]);
 
   const value = useMemo<AuthState>(
     () => ({

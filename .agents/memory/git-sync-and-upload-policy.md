@@ -44,3 +44,13 @@ Actions starts after commit transfer.
 **How to apply:** Keep local guards. Explain that untested direct default-branch
 syncs are blocked by the required check, while other refs and historical copies
 still need care. Ownership/visibility changes require a separate owner decision.
+
+Keep GitHub protections enabled and use a review branch and pull request for
+syncing when direct updates are blocked.
+
+**Why:** The user explicitly approved this approach rather than weakening protections.
+
+**How to apply:** Verify the live GitHub tip and every incoming commit, not only
+the current tree or a tracking ref that task merges may have changed. A clean
+incoming range is not proof that older GitHub history is upload-free; confirmed
+legacy uploads require a separately approved historical cleanup.

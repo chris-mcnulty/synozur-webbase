@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useToast } from "@/hooks/use-toast";
+import { PrivatePagesPanel } from "@/components/admin/PrivatePagesPanel";
 
 // #225 — Client-org create/edit + member management. Mounts at
 // /access/clients/new and /access/clients/:id.
@@ -831,6 +832,7 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
               )}
             </Card>
           )}
+          {!isNew && org && id && <PrivatePagesPanel orgId={id} />}
         </div>
       )}
     </AdminLayout>

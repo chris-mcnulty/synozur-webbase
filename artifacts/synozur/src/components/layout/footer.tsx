@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
+import { useBoardNavVisible } from "@/lib/board";
 import { getActiveApplications } from "@/data/applications";
 import {
   Turnstile,
@@ -114,6 +115,7 @@ export function FooterSubscribeForm() {
 }
 
 export function Footer() {
+  const showBoard = useBoardNavVisible();
   // #103: applications column reads from the same API endpoint that
   // drives the header nav and the applications list page. Falls back to
   // the static applications list when the API is empty or unreachable,
@@ -225,7 +227,12 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-4 text-foreground">Company</h3>
             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-              {FOOTER_COMPANY_LINKS.map((link) => {
+              {(showBoard
+                ? FOOTER_COMPANY_LINKS.flatMap((l) =>
+                    l.href === "/team" ? [l, { label: "Board", href: "/board" }] : [l],
+                  )
+                : FOOTER_COMPANY_LINKS
+              ).map((link) => {
                 const isExternal = /^https?:\/\//.test(link.href);
                 const isCareers = link.label === "Careers";
                 return (

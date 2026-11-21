@@ -40,7 +40,9 @@ export async function loadUserById(userId: string): Promise<AuthedUser | null> {
   const userRow = await db.query.usersTable.findFirst({
     where: eq(usersTable.id, userId),
   });
-  if (!userRow) return null;
+  // Shared identities are valid only through their dedicated, live-checked
+  // Galaxy cookie. Never hydrate them from native sessions or OAuth tokens.
+  if (!userRow || userRow.authProvider === "shared_org") return null;
   const roleRows = await db
     .select({ id: rolesTable.id, name: rolesTable.name })
     .from(userRoles)

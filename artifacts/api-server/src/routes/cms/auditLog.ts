@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, gte, lte, like, or, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, like, or, lt, sql, notInArray } from "drizzle-orm";
 import { db, auditLogTable, usersTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
+import { isBoardAdmin, privateBoardHeaders } from "../../lib/board";
 
 const router: IRouter = Router();
 
@@ -71,8 +72,10 @@ async function buildWhere(f: Filters) {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-async function fetchRows(f: Filters, limit: number, cursor: CursorShape | null) {
-  const where = await buildWhere(f);
+async function fetchRows(f: Filters, limit: number, cursor: CursorShape | null, includeBoard: boolean) {
+  // Ordinary CMS activity feeds admit editors/authors. Board snapshots contain
+  // private biographies and must never inherit that wider authorization.
+  const where = and(await buildWhere(f), includeBoard ? undefined : notInArray(auditLogTable.entity, ["board", "board_profile"]));
   // Cursor: rows older than (at, id) tuple.
   const cursorCond = cursor
     ? or(
@@ -118,6 +121,7 @@ router.get(
   requireAuth,
   requireRole("admin", "editor", "author", "contributor"),
   async (req, res) => {
+    privateBoardHeaders(req, res, () => {});
     const parsed = QuerySchema.safeParse(req.query);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid query", details: parsed.error.flatten() });
@@ -137,7 +141,7 @@ router.get(
     const cursor = decodeCursor(f.cursor);
 
     try {
-      const rows = await fetchRows(f, limit, cursor);
+      const rows = await fetchRows(f, limit, cursor, isBoardAdmin(req.authedUser));
       const hasMore = rows.length > limit;
       const page = hasMore ? rows.slice(0, limit) : rows;
       const last = page[page.length - 1];
@@ -172,6 +176,7 @@ router.get(
   requireAuth,
   requireRole("admin"),
   async (req, res) => {
+    privateBoardHeaders(req, res, () => {});
     const parsed = QuerySchema.safeParse(req.query);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid query" });
@@ -181,7 +186,7 @@ router.get(
     // CSV export is intentionally uncapped vs the JSON page size, but we
     // hard-cap at 10k rows so a runaway export can't OOM the server.
     const MAX_CSV = 10_000;
-    const rows = await fetchRows(f, MAX_CSV, null);
+    const rows = await fetchRows(f, MAX_CSV, null, isBoardAdmin(req.authedUser));
     const page = rows.length > MAX_CSV ? rows.slice(0, MAX_CSV) : rows;
 
     const headers = [

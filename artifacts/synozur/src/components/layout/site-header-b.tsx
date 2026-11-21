@@ -8,6 +8,7 @@ import { LOGO_COLOR_URL } from "@workspace/synozur-nav";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
 import { useAuth, type AuthedUser } from "@/context/auth";
+import { useBoardNavVisible } from "@/lib/board";
 import {
   CommandDialog,
   CommandEmpty,
@@ -227,6 +228,10 @@ function ResourcesDropdown({ overDark, isActive }: { overDark: boolean; isActive
 export function SiteHeaderB() {
   const [location, navigate] = useLocation();
   const { isSignedIn, user, signOut } = useAuth();
+  const showBoard = useBoardNavVisible();
+  const mainNav = showBoard
+    ? [...MAIN_NAV, { name: "Board", href: "/board" }]
+    : MAIN_NAV;
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
@@ -438,7 +443,7 @@ export function SiteHeaderB() {
 
           {/* ── Center: merged nav (desktop) ─────────────────────────────── */}
           <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
-            {MAIN_NAV.map(link => (
+            {mainNav.map(link => (
               <Link
                 key={link.name}
                 href={link.href}
@@ -504,7 +509,7 @@ export function SiteHeaderB() {
               </form>
 
               {/* Primary nav links */}
-              {MAIN_NAV.map(link => (
+              {mainNav.map(link => (
                 <Link
                   key={link.name}
                   href={link.href}

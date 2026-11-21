@@ -2,6 +2,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { logger } from "./logger";
 import { backfillLandingPageCollateral } from "./syncCollateral";
+import { migrateBoard } from "./boardMigration";
+import { migratePrivateCustomerPages } from "./privatePages/migration";
 
 /**
  * Idempotent schema migrations that run on every server startup.
@@ -16,6 +18,7 @@ import { backfillLandingPageCollateral } from "./syncCollateral";
  */
 export async function runMigrations(): Promise<void> {
   logger.info("Running startup migrations");
+  await migrateBoard();
 
   try {
     await db.execute(sql`
@@ -4008,6 +4011,7 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS hubspot_deal_id TEXT;
     `);
 
+    await migratePrivateCustomerPages();
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

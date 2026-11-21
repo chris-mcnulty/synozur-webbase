@@ -10,7 +10,8 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
 import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
 import { api } from "@/lib/api";
-import { useListCmsUsers, type CmsUser, type MediaItem } from "@workspace/api-client-react";
+import { useListCmsUsers, useListAdminBoard, type CmsUser, type MediaItem } from "@workspace/api-client-react";
+import { BOARD_KEY_ROOT, BOARD_REQUEST, BOARD_STATUS_POLL_MS, useBoardIdentity } from "@/lib/board";
 import type { TeamMemberInput } from "@workspace/api-zod/types";
 
 interface Props {
@@ -45,6 +46,30 @@ export default function TeamForm({ id }: Props) {
   const [tagsInput, setTagsInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showPhotoPicker, setShowPhotoPicker] = useState(false);
+  const boardIdentity = useBoardIdentity();
+  const [showOnBoard, setShowOnBoard] = useState(false);
+  const [boardDirty, setBoardDirty] = useState(false);
+  const boardQ = useListAdminBoard({
+    query: {
+      queryKey: boardIdentity.key("admin", "list"),
+      enabled: boardIdentity.isAdmin,
+      staleTime: 0,
+      gcTime: 0,
+      refetchInterval: BOARD_STATUS_POLL_MS,
+    },
+    request: BOARD_REQUEST,
+  });
+
+  useEffect(() => {
+    setBoardDirty(false);
+    setShowOnBoard(false);
+  }, [memberId, boardIdentity.uid]);
+
+  useEffect(() => {
+    if (!boardDirty && boardQ.data) {
+      setShowOnBoard(memberId != null && boardQ.data.items.some((p) => p.teamMemberId === memberId && p.active));
+    }
+  }, [boardQ.data, memberId, boardDirty]);
 
   const { data: existing, isLoading } = useQuery({
     queryKey: ["admin-team-member", memberId],
@@ -83,7 +108,11 @@ export default function TeamForm({ id }: Props) {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
-      const payload: TeamMemberInput = { ...form, tags };
+      const payload: TeamMemberInput = {
+        ...form,
+        tags,
+        ...(boardIdentity.isAdmin && boardDirty ? { showOnBoard } : {}),
+      };
       if (isNew) return api.createTeamMember(payload);
       return api.updateTeamMember(memberId!, payload);
     },
@@ -91,6 +120,7 @@ export default function TeamForm({ id }: Props) {
       qc.invalidateQueries({ queryKey: ["admin-team-members"] });
       qc.invalidateQueries({ queryKey: ["admin-team-member", memberId] });
       qc.invalidateQueries({ queryKey: ["public-team-members"] });
+      qc.invalidateQueries({ queryKey: [BOARD_KEY_ROOT] });
       navigate("/people/team-members");
     },
     onError: (e: Error) => setError(e.message),
@@ -369,8 +399,38 @@ export default function TeamForm({ id }: Props) {
             onChange={(e) => setForm({ ...form, active: e.target.checked })}
             data-testid="input-active"
           />
-          <Label htmlFor="active">Active (show on public team page)</Label>
+          <Label htmlFor="active">Show on Team</Label>
         </div>
+
+        {boardIdentity.isAdmin && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                id="showOnBoard"
+                type="checkbox"
+                checked={showOnBoard}
+                disabled={boardQ.isLoading || boardQ.isError}
+                onChange={(e) => {
+                  setShowOnBoard(e.target.checked);
+                  setBoardDirty(true);
+                }}
+                data-testid="input-showOnBoard"
+              />
+              <Label htmlFor="showOnBoard">Show on Board</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Team and Board membership are independent. Both use this profile's name, photo and biography.
+              Save the profile to apply your selections. The Board's separate publication setting still applies.
+            </p>
+            {boardQ.isLoading && <p className="text-xs text-muted-foreground">Loading Board membership…</p>}
+            {boardQ.isError && (
+              <p className="text-xs text-destructive">
+                Could not load Board membership. It will be left unchanged.
+                {" "}<button type="button" className="underline" onClick={() => boardQ.refetch()}>Retry</button>
+              </p>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="text-destructive text-sm" data-testid="text-form-error">
