@@ -54,3 +54,15 @@ syncing when direct updates are blocked.
 the current tree or a tracking ref that task merges may have changed. A clean
 incoming range is not proof that older GitHub history is upload-free; confirmed
 legacy uploads require a separately approved historical cleanup.
+
+New review branches need a verified GitHub baseline when legacy history remains
+on GitHub: create the remote branch at the verified existing main tip, then push
+the inspected new range with the upload guard enabled.
+
+**Why:** The guard checks the entire ancestry for a nonexistent remote branch,
+including legacy commits already held by GitHub. An existing verified remote
+baseline lets it check the incoming range without disabling protection.
+
+**How to apply:** First verify the live remote tip, ancestry, and all incoming
+commit trees. Never seed a branch from local recovery history or treat this as
+removal of historical uploads.
