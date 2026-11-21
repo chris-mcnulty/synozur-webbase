@@ -55,6 +55,17 @@ the current tree or a tracking ref that task merges may have changed. A clean
 incoming range is not proof that older GitHub history is upload-free; confirmed
 legacy uploads require a separately approved historical cleanup.
 
+The user approved keeping this workspace on a persistent review branch for
+routine GitHub Sync, rather than repeatedly attempting direct pushes to main.
+
+**Why:** A one-off pull request does not fix future Sync attempts if the
+workspace still targets protected main.
+
+**How to apply:** Preserve the workspace's review-branch upstream. Sync pushes
+there; checked pull requests merge to main separately. Keep the remote review
+branch after merges and incorporate newer main changes without force-pushing.
+Do not switch the workspace back to main as routine cleanup.
+
 New review branches need a verified GitHub baseline when legacy history remains
 on GitHub: create the remote branch at the verified existing main tip, then push
 the inspected new range with the upload guard enabled.
